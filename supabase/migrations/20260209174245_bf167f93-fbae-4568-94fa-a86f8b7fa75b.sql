@@ -1,0 +1,1 @@
+ALTER TABLE public.feedback_analyses ADD COLUMN top_phrases text[] DEFAULT NULL;
