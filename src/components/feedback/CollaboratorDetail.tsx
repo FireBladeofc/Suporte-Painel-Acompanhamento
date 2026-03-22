@@ -5,14 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collaborator } from '@/types/feedback';
 import { SupportTicket, AgentMetrics } from '@/types/support';
 import { ManualFeedbackTab } from './ManualFeedbackTab';
-import { AIAnalysisTab } from './AIAnalysisTab';
 import { InsightsSummaryTab } from './InsightsSummaryTab';
 import { CollaboratorProfileTab } from './CollaboratorProfileTab';
 import { DevelopmentPlanTab } from './DevelopmentPlanTab';
 import { 
   Calendar,
   ClipboardCheck,
-  BrainCircuit,
   Sparkles,
   ClipboardList,
   Target,
@@ -167,7 +165,7 @@ export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMe
 
       {/* Tabs for Insights, Manual Feedback, and AI Analysis */}
       <Tabs defaultValue="insights" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="insights" className="gap-2">
             <Sparkles className="w-4 h-4" />
             Resumo & Insights
@@ -183,10 +181,6 @@ export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMe
           <TabsTrigger value="manual" className="gap-2">
             <ClipboardCheck className="w-4 h-4" />
             Feedback Manual
-          </TabsTrigger>
-          <TabsTrigger value="analysis" className="gap-2">
-            <BrainCircuit className="w-4 h-4" />
-            Análise de IA
           </TabsTrigger>
         </TabsList>
 
@@ -204,10 +198,6 @@ export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMe
 
         <TabsContent value="manual">
           <ManualFeedbackTab collaborator={collaborator} />
-        </TabsContent>
-
-        <TabsContent value="analysis">
-          <AIAnalysisTab collaborator={collaborator} />
         </TabsContent>
       </Tabs>
     </div>

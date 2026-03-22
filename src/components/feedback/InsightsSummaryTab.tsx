@@ -3,15 +3,13 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Collaborator, FeedbackAnalysis, ManualFeedback } from '@/types/feedback';
+import { Collaborator } from '@/types/feedback';
 import { AgentMetrics, SupportTicket } from '@/types/support';
-import { useCollaboratorAnalyses } from '@/hooks/useFeedback';
 import { useManualFeedbacks } from '@/hooks/useManualFeedbacks';
+import { useDevelopmentPlans } from '@/hooks/useDevelopmentPlans';
 import { 
   Loader2,
-  TrendingUp,
   TrendingDown,
-  Minus,
   Lightbulb,
   Target,
   AlertTriangle,
@@ -19,13 +17,12 @@ import {
   BarChart3,
   Sparkles,
   MessageSquare,
-   Brain,
-   FileText,
-   Clock,
-   Headphones,
-   RefreshCw,
-   Star,
-   ListChecks
+  Clock,
+  Headphones,
+  RefreshCw,
+  Star,
+  ListChecks,
+  Shield
 } from 'lucide-react';
 
 interface InsightsSummaryTabProps {
@@ -35,8 +32,8 @@ interface InsightsSummaryTabProps {
 }
 
 export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetrics, tickets = [] }: InsightsSummaryTabProps) {
-  const { analyses, loading: loadingAnalyses } = useCollaboratorAnalyses(collaborator.id);
-  const { feedbacks, loading: loadingFeedbacks, stats } = useManualFeedbacks(collaborator.id);
+  const { feedbacks, loading: loadingFeedbacks, stats: feedbackStats } = useManualFeedbacks(collaborator.id);
+  const { plans, stats: pdiStats, loading: loadingPDI } = useDevelopmentPlans(collaborator.id);
 
   // Compute top 4 finalization reasons for this agent
   const topFinalizacoes = useMemo(() => {
@@ -59,112 +56,87 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
   }, [dashboardMetrics, tickets]);
 
   const insights = useMemo(() => {
-    if (analyses.length === 0 && feedbacks.length === 0) return null;
-
-    // Engagement analysis from AI
-    const engagementCounts = {
-      positive: analyses.filter(a => a.engagement_level === 'positive').length,
-      neutral: analyses.filter(a => a.engagement_level === 'neutral').length,
-      negative: analyses.filter(a => a.engagement_level === 'negative').length,
-    };
-    const totalEngagement = engagementCounts.positive + engagementCounts.neutral + engagementCounts.negative;
-    const positiveRate = totalEngagement > 0 ? (engagementCounts.positive / totalEngagement) * 100 : 0;
-    const negativeRate = totalEngagement > 0 ? (engagementCounts.negative / totalEngagement) * 100 : 0;
-
-    // Aggregate strengths and improvements from AI analyses
-    const allStrengths: Record<string, number> = {};
-    const allImprovements: Record<string, number> = {};
-    const allPatterns: Record<string, number> = {};
-
-    analyses.forEach(a => {
-      a.strengths?.forEach(s => {
-        allStrengths[s] = (allStrengths[s] || 0) + 1;
-      });
-      a.improvements?.forEach(i => {
-        allImprovements[i] = (allImprovements[i] || 0) + 1;
-      });
-      a.patterns?.forEach(p => {
-        allPatterns[p] = (allPatterns[p] || 0) + 1;
-      });
-    });
-
-    const topStrengths = Object.entries(allStrengths)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-    
-    const topImprovements = Object.entries(allImprovements)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    const topPatterns = Object.entries(allPatterns)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    // Manual feedback analysis
     const categoryBreakdown: Record<string, number> = {};
     feedbacks.forEach(f => {
       const cat = f.category || 'other';
       categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
     });
 
-    const feedbackCompletionRate = stats.total > 0 
-      ? (stats.completed / stats.total) * 100 
+    const feedbackCompletionRate = feedbackStats.total > 0 
+      ? (feedbackStats.completed / feedbackStats.total) * 100 
       : 0;
 
-    // Recent observations from manual feedbacks
     const recentObservations = feedbacks
       .filter(f => f.observations)
       .slice(0, 5)
       .map(f => f.observations!);
 
-    // Complaints and questions totals
-    const totalComplaints = analyses.reduce((sum, a) => sum + (a.complaints_count || 0), 0);
-    const totalQuestions = analyses.reduce((sum, a) => sum + (a.questions_count || 0), 0);
-
-     // Collect all AI feedbacks for collaborator
-     const allFeedbacks = analyses
-       .filter(a => a.feedback)
-       .map(a => ({
-         date: a.analysis_date,
-         weekStart: a.week_start,
-         feedback: a.feedback!,
-         engagementLevel: a.engagement_level,
-       }));
-
-    // Trend analysis (compare first half vs second half of analyses)
-    let engagementTrend: 'up' | 'down' | 'stable' = 'stable';
-    if (analyses.length >= 4) {
-      const half = Math.floor(analyses.length / 2);
-      const firstHalf = analyses.slice(half); // older (arrays are sorted desc)
-      const secondHalf = analyses.slice(0, half); // newer
-      
-      const firstPositiveRate = firstHalf.filter(a => a.engagement_level === 'positive').length / firstHalf.length;
-      const secondPositiveRate = secondHalf.filter(a => a.engagement_level === 'positive').length / secondHalf.length;
-      
-      if (secondPositiveRate > firstPositiveRate + 0.1) engagementTrend = 'up';
-      else if (secondPositiveRate < firstPositiveRate - 0.1) engagementTrend = 'down';
-    }
-
     return {
-      engagementCounts,
-      positiveRate,
-      negativeRate,
-      topStrengths,
-      topImprovements,
-      topPatterns,
       categoryBreakdown,
       feedbackCompletionRate,
       recentObservations,
-      totalComplaints,
-      totalQuestions,
-      engagementTrend,
-      totalAnalyses: analyses.length,
       totalFeedbacks: feedbacks.length,
-       allFeedbacks,
     };
-  }, [analyses, feedbacks, stats]);
+  }, [feedbacks, feedbackStats]);
 
-  const loading = loadingAnalyses || loadingFeedbacks;
+  const operationalInsights = useMemo(() => {
+    if (!dashboardMetrics) return [];
+    const items: { title: string; desc: string; type: 'info' | 'warning' | 'success' | 'alert' }[] = [];
+
+    // NPS Logic
+    if (dashboardMetrics.npsMedio !== null) {
+      if (dashboardMetrics.npsMedio >= 4.8) {
+        items.push({
+          title: 'Excelência em Satisfação',
+          desc: 'NPS acima de 4.8 indica altíssima qualidade de resolução e simpatia.',
+          type: 'success'
+        });
+      } else if (dashboardMetrics.npsMedio < 4.0) {
+        items.push({
+          title: 'Atenção ao NPS',
+          desc: 'Pontuação abaixo de 4.0 sugere atritos no atendimento ou falta de clareza.',
+          type: 'alert'
+        });
+      }
+    }
+
+    // TMA Logic
+    if (dashboardMetrics.tma > 20) {
+      items.push({
+        title: 'TMA Elevado',
+        desc: 'Atendimentos longos sugerem necessidade de treinamento em ferramentas ou processos.',
+        type: 'warning'
+      });
+    } else if (dashboardMetrics.tma > 0 && dashboardMetrics.tma < 10) {
+      items.push({
+        title: 'Alta Agilidade',
+        desc: 'TMA abaixo de 10 min. Ótima performance em volume de atendimentos.',
+        type: 'success'
+      });
+    }
+
+    // Rechamadas Logic
+    if (dashboardMetrics.taxaRechamadas > 20) {
+      items.push({
+        title: 'Baixa Resolutividade',
+        desc: 'Taxa de rechamadas acima de 20%. Clientes estão voltando com a mesma dúvida.',
+        type: 'alert'
+      });
+    }
+
+    // Taxa de Avaliação Logic
+    if (dashboardMetrics.taxaAvaliacao < 15 && dashboardMetrics.totalAtendimentos > 50) {
+      items.push({
+        title: 'Engajamento em Avaliações',
+        desc: 'Baixa captação de feedback. Sugerir foco na solicitação de avaliação no encerramento.',
+        type: 'info'
+      });
+    }
+
+    return items;
+  }, [dashboardMetrics]);
+
+  const loading = loadingFeedbacks || loadingPDI;
 
   if (loading) {
     return (
@@ -174,28 +146,7 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
     );
   }
 
-  if (!insights || (insights.totalAnalyses === 0 && insights.totalFeedbacks === 0)) {
-    return (
-      <Card className="bg-card/50 border-border/50 border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="p-4 rounded-full bg-muted mb-4">
-            <Sparkles className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h4 className="text-lg font-semibold text-foreground mb-2">
-            Sem dados para análise
-          </h4>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            Registre feedbacks manuais ou faça análises de IA para gerar insights consolidados.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const TrendIcon = insights.engagementTrend === 'up' ? TrendingUp : 
-                    insights.engagementTrend === 'down' ? TrendingDown : Minus;
-  const trendColor = insights.engagementTrend === 'up' ? 'text-green-500' : 
-                     insights.engagementTrend === 'down' ? 'text-red-500' : 'text-muted-foreground';
+  const hasSomeData = insights.totalFeedbacks > 0 || pdiStats.total > 0 || (dashboardMetrics && dashboardMetrics.totalAtendimentos > 0);
 
   const categoryLabels: Record<string, string> = {
     performance: 'Desempenho',
@@ -204,8 +155,143 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
     other: 'Outros'
   };
 
+  if (!hasSomeData) {
+    return (
+      <Card className="bg-card/50 border-border/50 border-dashed">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="p-4 rounded-full bg-muted mb-4">
+            <Sparkles className="w-8 h-8 animate-pulse text-muted-foreground" />
+          </div>
+          <h4 className="text-lg font-semibold text-foreground mb-2">
+            Aguardando dados...
+          </h4>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Adicione ações ao PDI ou aguarde a integração de dados para visualizar o painel.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Operational Insights Section */}
+      {operationalInsights.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <Card className="bg-card/50 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Lightbulb className="w-5 h-5 text-yellow-500" />
+                Diagnóstico de Performance Operacional
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {operationalInsights.map((insight, i) => (
+                  <div 
+                    key={i} 
+                    className={`p-3 rounded-lg border flex gap-3 items-start ${
+                      insight.type === 'success' ? 'bg-emerald-500/5 border-emerald-500/20' :
+                      insight.type === 'alert' ? 'bg-red-500/5 border-red-500/20' :
+                      insight.type === 'warning' ? 'bg-yellow-500/5 border-yellow-500/20' :
+                      'bg-blue-500/5 border-blue-500/20'
+                    }`}
+                  >
+                    <div className="mt-0.5">
+                      {insight.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> :
+                       insight.type === 'alert' ? <AlertTriangle className="w-4 h-4 text-red-500" /> :
+                       insight.type === 'warning' ? <TrendingDown className="w-4 h-4 text-yellow-500" /> :
+                       <Lightbulb className="w-4 h-4 text-blue-500" />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${
+                        insight.type === 'success' ? 'text-emerald-500' :
+                        insight.type === 'alert' ? 'text-red-500' :
+                        insight.type === 'warning' ? 'text-yellow-600' :
+                        'text-blue-500'
+                      }`}>{insight.title}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{insight.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* PDI Progress Summary */}
+      {pdiStats.total > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="bg-card/50 border-border/50 overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Target className="w-24 h-24" />
+            </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="w-5 h-5 text-primary" />
+                Plano de Desenvolvimento (PDI)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 space-y-4">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-2xl font-bold">{pdiStats.completed}/{pdiStats.total}</span>
+                    <span className="text-xs text-muted-foreground mb-1">Concluído</span>
+                  </div>
+                  <Progress value={(pdiStats.completed / pdiStats.total) * 100} className="h-2" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 text-center">
+                      <p className="text-lg font-bold">{pdiStats.completed}</p>
+                      <p className="text-[10px] uppercase">Fim</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary text-center">
+                      <p className="text-lg font-bold">{pdiStats.inProgress}</p>
+                      <p className="text-[10px] uppercase">Ação</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">Últimas Ações do Plano</p>
+                  <div className="space-y-2">
+                    {plans.slice(0, 3).map((plan) => (
+                      <div key={plan.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border/50">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className={`w-4 h-4 ${plan.status === 'completed' ? 'text-emerald-500' : 'text-muted-foreground/30'}`} />
+                          <span className={`text-sm ${plan.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground font-medium'}`}>
+                            {plan.title}
+                          </span>
+                        </div>
+                        <Badge variant="secondary" className={`text-[10px] ${
+                          plan.priority === 'high' ? 'bg-red-500/10 text-red-500' :
+                          plan.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                          'bg-blue-500/10 text-blue-500'
+                        }`}>
+                          {plan.priority === 'high' ? 'Alta' : plan.priority === 'medium' ? 'Média' : 'Baixa'}
+                        </Badge>
+                      </div>
+                    ))}
+                    {plans.length > 3 && (
+                      <p className="text-[10px] text-center text-muted-foreground mt-1">
+                        + {plans.length - 3} outras ações no plano completo
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Dashboard Metrics - linked from panel */}
       {dashboardMetrics && dashboardMetrics.totalAtendimentos > 0 && (
         <motion.div
@@ -291,17 +377,7 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
       )}
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-card/50 border-border/50">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Brain className="w-5 h-5 text-primary" />
-              <span className="text-2xl font-bold text-foreground">{insights.totalAnalyses}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Análises de IA</p>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-card/50 border-border/50">
           <CardContent className="p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -309,18 +385,6 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
               <span className="text-2xl font-bold text-foreground">{insights.totalFeedbacks}</span>
             </div>
             <p className="text-xs text-muted-foreground">Feedbacks Manuais</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/50 border-border/50">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <TrendIcon className={`w-5 h-5 ${trendColor}`} />
-              <span className="text-2xl font-bold text-foreground">
-                {insights.positiveRate.toFixed(0)}%
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">Engajamento Positivo</p>
           </CardContent>
         </Card>
 
@@ -336,163 +400,6 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
           </CardContent>
         </Card>
       </div>
-
-      {/* Engagement Breakdown */}
-      {insights.totalAnalyses > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Distribuição de Engajamento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Positivo 😀</span>
-                    <span className="font-medium text-green-500">{insights.engagementCounts.positive}</span>
-                  </div>
-                  <Progress value={insights.positiveRate} className="h-2 bg-muted [&>div]:bg-green-500" />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Neutro 😐</span>
-                    <span className="font-medium text-yellow-500">{insights.engagementCounts.neutral}</span>
-                  </div>
-                  <Progress 
-                    value={insights.totalAnalyses > 0 ? (insights.engagementCounts.neutral / insights.totalAnalyses) * 100 : 0} 
-                    className="h-2 bg-muted [&>div]:bg-yellow-500" 
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Negativo 😠</span>
-                    <span className="font-medium text-red-500">{insights.engagementCounts.negative}</span>
-                  </div>
-                  <Progress value={insights.negativeRate} className="h-2 bg-muted [&>div]:bg-red-500" />
-                </div>
-              </div>
-
-              {/* Trend Indicator */}
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-center gap-2">
-                  <TrendIcon className={`w-4 h-4 ${trendColor}`} />
-                  <span className="text-sm text-muted-foreground">
-                    {insights.engagementTrend === 'up' && 'Tendência de melhoria no engajamento'}
-                    {insights.engagementTrend === 'down' && 'Tendência de queda no engajamento'}
-                    {insights.engagementTrend === 'stable' && 'Engajamento estável'}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Strengths & Improvements */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Strengths */}
-        {insights.topStrengths.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="bg-card/50 border-border/50 h-full">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg text-green-500">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Pontos Fortes Recorrentes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {insights.topStrengths.map(([strength, count], i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-green-500 mt-1">•</span>
-                      <span className="text-foreground flex-1">{strength}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {count}x
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Improvements */}
-        {insights.topImprovements.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <Card className="bg-card/50 border-border/50 h-full">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg text-yellow-500">
-                  <Target className="w-5 h-5" />
-                  Pontos de Melhoria
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {insights.topImprovements.map(([improvement, count], i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-yellow-500 mt-1">•</span>
-                      <span className="text-foreground flex-1">{improvement}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {count}x
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Patterns */}
-      {insights.topPatterns.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Lightbulb className="w-5 h-5 text-primary" />
-                Padrões Identificados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {insights.topPatterns.map(([pattern, count], i) => (
-                  <Badge 
-                    key={i} 
-                    variant="secondary" 
-                    className="bg-primary/10 text-primary border-primary/20"
-                  >
-                    {pattern} ({count}x)
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
 
       {/* Manual Feedback Categories */}
       {Object.keys(insights.categoryBreakdown).length > 0 && (
@@ -556,83 +463,6 @@ export function InsightsSummaryTab({ collaborator, agentMetrics: dashboardMetric
           </Card>
         </motion.div>
       )}
-
-      {/* Quick Stats */}
-      {(insights.totalComplaints > 0 || insights.totalQuestions > 0) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                Métricas dos Atendimentos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-red-500/10 text-center">
-                  <p className="text-2xl font-bold text-red-500">{insights.totalComplaints}</p>
-                  <p className="text-xs text-muted-foreground">Reclamações Identificadas</p>
-                </div>
-                <div className="p-4 rounded-lg bg-blue-500/10 text-center">
-                  <p className="text-2xl font-bold text-blue-500">{insights.totalQuestions}</p>
-                  <p className="text-xs text-muted-foreground">Dúvidas Registradas</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-       {/* Consolidated AI Feedbacks */}
-       {insights.allFeedbacks.length > 0 && (
-         <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ delay: 0.4 }}
-         >
-           <Card className="bg-card/50 border-border/50 border-2 border-primary/20">
-             <CardHeader className="pb-3">
-               <CardTitle className="flex items-center gap-2 text-lg">
-                 <FileText className="w-5 h-5 text-primary" />
-                 Feedbacks Consolidados para o Colaborador
-               </CardTitle>
-               <p className="text-sm text-muted-foreground">
-                 Resumo dos feedbacks gerados pela IA para encaminhar ao colaborador
-               </p>
-             </CardHeader>
-             <CardContent className="space-y-4">
-               {insights.allFeedbacks.map((item, i) => {
-                 const engagementEmoji = item.engagementLevel === 'positive' ? '😀' : 
-                                        item.engagementLevel === 'neutral' ? '😐' : '😠';
-                 const engagementColor = item.engagementLevel === 'positive' ? 'border-green-500/30 bg-green-500/5' : 
-                                        item.engagementLevel === 'neutral' ? 'border-yellow-500/30 bg-yellow-500/5' : 
-                                        'border-red-500/30 bg-red-500/5';
-                 
-                 return (
-                   <div 
-                     key={i}
-                     className={`p-4 rounded-lg border ${engagementColor}`}
-                   >
-                     <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                       <span className="text-base">{engagementEmoji}</span>
-                       <span>Semana de {new Date(item.weekStart).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>
-                       <span>•</span>
-                       <span>Análise em {new Date(item.date).toLocaleDateString('pt-BR')}</span>
-                     </div>
-                     <div className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-                       {item.feedback}
-                     </div>
-                   </div>
-                 );
-               })}
-             </CardContent>
-           </Card>
-         </motion.div>
-       )}
     </div>
   );
 }

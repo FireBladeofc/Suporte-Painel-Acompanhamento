@@ -68,55 +68,107 @@ export function useCollaborators() {
 
   const deleteCollaborator = async (id: string) => {
     try {
-      // 1. Get all analysis IDs for this collaborator to cleanup file references
+      setLoading(true);
+      console.log('Iniciando exclusão do colaborador:', id);
+
+      // 1. Get all analysis IDs and file paths for cleanup in Storage
+      // We do this before deleting the records because we need the paths
       const { data: analyses, error: analysesQueryError } = await supabase
         .from('feedback_analyses')
         .select('id')
         .eq('collaborator_id', id);
 
-      if (analysesQueryError) throw analysesQueryError;
+      if (analysesQueryError) {
+        console.error('Error fetching analyses for cleanup:', analysesQueryError);
+        // We continue anyway, as the main goal is deleting the collaborator
+      }
 
       const analysisIds = (analyses || []).map(a => a.id);
 
-      // 2. Cleanup analysis files if any analyses exist
       if (analysisIds.length > 0) {
-        const { error: filesDeleteError } = await supabase
+        // Get file paths to delete from storage
+        const { data: files, error: filesQueryError } = await supabase
           .from('analysis_files')
-          .delete()
+          .select('file_path')
           .in('analysis_id', analysisIds);
-        
-        if (filesDeleteError) throw filesDeleteError;
+
+        if (filesQueryError) {
+          console.error('Error fetching file paths for storage cleanup:', filesQueryError);
+        } else if (files && files.length > 0) {
+          // Extract storage paths from signed URLs/paths
+          const storagePaths = files.map(f => {
+            try {
+              // Handle potential full URLs if stored that way, or just paths
+              if (f.file_path.startsWith('http')) {
+                const url = new URL(f.file_path);
+                const match = url.pathname.match(/\/feedback-files\/([^?]+)/);
+                return match ? match[1] : null;
+              }
+              return f.file_path;
+            } catch {
+              return null;
+            }
+          }).filter((p): p is string => p !== null);
+
+          if (storagePaths.length > 0) {
+            console.log('Limpando arquivos do Storage:', storagePaths);
+            const { error: storageError } = await supabase.storage
+              .from('feedback-files')
+              .remove(storagePaths);
+
+            if (storageError) {
+              console.error('Error deleting files from storage:', storageError);
+            }
+          }
+        }
       }
 
-      // 3. Delete from all secondary tables that reference collaborator_id
-      await supabase.from('feedback_analyses').delete().eq('collaborator_id', id);
-      await supabase.from('manual_feedbacks').delete().eq('collaborator_id', id);
-      await supabase.from('collaborator_profiles').delete().eq('collaborator_id', id);
-      await supabase.from('collaborator_attention_flags').delete().eq('collaborator_id', id);
-      await supabase.from('collaborator_warnings').delete().eq('collaborator_id', id);
-      await supabase.from('development_plans').delete().eq('collaborator_id', id);
-
-      // 4. Finally, delete the collaborator
-      const { error } = await supabase
+      // 2. Delete the collaborator
+      // ON DELETE CASCADE handles all secondary tables in the database:
+      // feedback_analyses, manual_feedbacks, collaborator_profiles, 
+      // collaborator_attention_flags, collaborator_warnings, development_plans, 
+      // and analysis_files (via feedback_analyses)
+      console.log('Executando deleção no Banco de Dados...');
+      const { data, error } = await supabase
         .from('collaborators')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database delete error:', error);
+        throw error;
+      }
 
+      // 3. Verify if deletion actually happened (RLS might silently prevent it)
+      if (!data || data.length === 0) {
+        console.warn('Nenhum colaborador foi removido. Verifique permissões de RLS.');
+        throw new Error('Não foi possível remover o colaborador. Isso ocorre por falta de permissão no Banco de Dados (RLS). Certifique-se de executar o script SQL de liberação no painel do Supabase.');
+      }
+
+      console.log('Colaborador removido com sucesso do DB');
+
+      // 4. Update local state ONLY after confirmed success in DB
       setCollaborators(prev => prev.filter(c => c.id !== id));
+      
       toast({
         title: 'Sucesso',
         description: 'Colaborador e todos os seus dados foram removidos',
       });
+      
+      return true;
     } catch (error) {
       console.error('Error deleting collaborator:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao remover colaborador e dependências',
+        title: 'Erro ao remover',
+        description: error instanceof Error ? error.message : 'Falha ao remover colaborador e dependências',
         variant: 'destructive',
       });
+      // Refetch to ensure UI is in sync
+      fetchCollaborators();
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 

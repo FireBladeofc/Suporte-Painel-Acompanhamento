@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collaborator } from '@/types/feedback';
-import { User, Trash2, ChevronRight, Calendar, Brain, ClipboardCheck, Clock } from 'lucide-react';
+import { User, Trash2, ChevronRight, Calendar, ClipboardCheck, Clock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -140,16 +140,10 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
                   </AlertDialog>
                 </div>
 
-                {/* Stats Row - AI Analyses and Manual Feedbacks */}
                 <div 
                   className="flex items-center gap-4 mb-3 text-xs"
                   onClick={() => onSelect(collaborator)}
                 >
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Brain className="w-3.5 h-3.5 text-purple-400" />
-                    <span>{statsLoading ? '...' : collabStats?.analysesCount || 0}</span>
-                    <span className="text-muted-foreground/70">análises IA</span>
-                  </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
                     <span>{statsLoading ? '...' : collabStats?.manualFeedbacksCount || 0}</span>
