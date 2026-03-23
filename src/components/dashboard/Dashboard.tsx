@@ -109,7 +109,7 @@ export function Dashboard() {
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/30 blur-xl rounded-full" />
                 <div className="relative p-3 rounded-2xl bg-gradient-primary shadow-lg">
-                  <Headphones className="w-6 h-6 text-primary-foreground" />
+                  <FileSpreadsheet className="w-6 h-6 text-primary-foreground" />
                 </div>
               </div>
               <div>

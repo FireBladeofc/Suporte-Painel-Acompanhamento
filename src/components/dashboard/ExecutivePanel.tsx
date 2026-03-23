@@ -2,10 +2,10 @@ import { SupportTicket, AgentMetrics } from '@/types/support';
 import { KPICard } from './KPICard';
 import { useUniqueContacts } from '@/hooks/useUniqueContacts';
 import { motion } from 'framer-motion';
-import { 
-  Headphones, 
-  Hourglass, 
-  Star, 
+import {
+  Headphones,
+  Hourglass,
+  Star,
   ThumbsUp,
   AlertCircle,
   RefreshCw,
@@ -161,8 +161,8 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
         <KPICard
           title="Total de Registros"
           value={totalRegistros.toLocaleString('pt-BR')}
-          subtitle="antes da deduplicação"
-          icon={Headphones}
+          subtitle="Total de Atendimentos"
+          icon={FileSpreadsheet}
           delay={9}
         />
       </div>
