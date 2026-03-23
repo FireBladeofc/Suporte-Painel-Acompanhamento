@@ -24,6 +24,7 @@ import {
   FlaskConical,
   MessageSquareText
 } from 'lucide-react';
+import { startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 
 export function Dashboard() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -59,8 +60,11 @@ export function Dashboard() {
       
       // Filter by periodo
       if (filters.periodo) {
-        const ticketDate = ticket.data_abertura;
-        if (ticketDate < filters.periodo.start || ticketDate > filters.periodo.end) return false;
+        const ticketDate = startOfDay(ticket.data_abertura);
+        const filterStart = startOfDay(filters.periodo.start);
+        const filterEnd = startOfDay(filters.periodo.end);
+        
+        if (ticketDate < filterStart || ticketDate > filterEnd) return false;
       }
       
       // Filter by departamento

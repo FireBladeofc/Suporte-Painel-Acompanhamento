@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Filter, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 
@@ -30,12 +30,9 @@ export function GlobalFilters({ filters, onFiltersChange, tickets }: GlobalFilte
   const handleDateChange = (range: DateRange | undefined) => {
     setDateRange(range);
     if (range?.from && range?.to) {
-      const endOfDay = new Date(range.to);
-      endOfDay.setHours(23, 59, 59, 999);
-      
       onFiltersChange({
         ...filters,
-        periodo: { start: range.from, end: endOfDay }
+        periodo: { start: startOfDay(range.from), end: startOfDay(range.to) }
       });
     } else if (!range) {
       onFiltersChange({
