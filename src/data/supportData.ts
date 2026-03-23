@@ -17,7 +17,11 @@ export function parseDate(dateStr: string): Date {
   if (!dateStr) return new Date();
   const parts = dateStr.split('/');
   if (parts.length === 3) {
-    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    let year = parseInt(parts[2]);
+    if (year < 100) {
+      year += 2000;
+    }
+    return new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
   }
   return new Date();
 }

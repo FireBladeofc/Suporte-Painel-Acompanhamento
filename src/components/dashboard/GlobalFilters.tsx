@@ -30,9 +30,12 @@ export function GlobalFilters({ filters, onFiltersChange, tickets }: GlobalFilte
   const handleDateChange = (range: DateRange | undefined) => {
     setDateRange(range);
     if (range?.from && range?.to) {
+      const endOfDay = new Date(range.to);
+      endOfDay.setHours(23, 59, 59, 999);
+      
       onFiltersChange({
         ...filters,
-        periodo: { start: range.from, end: range.to }
+        periodo: { start: range.from, end: endOfDay }
       });
     } else if (!range) {
       onFiltersChange({

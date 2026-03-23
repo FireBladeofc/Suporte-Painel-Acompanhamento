@@ -56,10 +56,14 @@ function parseDate(dateValue: string | number | Date | undefined): Date {
   
   const dateStr = String(dateValue).trim();
   
-  // Try DD/MM/YYYY format
+  // Try DD/MM/YYYY or DD/MM/YY format
   const parts = dateStr.split('/');
   if (parts.length === 3) {
-    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    let year = parseInt(parts[2]);
+    if (year < 100) {
+      year += 2000; // Assume 20xx for 2-digit years
+    }
+    return new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
   }
   
   const parsed = new Date(dateStr);
