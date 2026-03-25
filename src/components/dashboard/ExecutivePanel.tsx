@@ -10,7 +10,8 @@ import {
   AlertCircle,
   RefreshCw,
   Users,
-  Timer
+  Timer,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface ExecutivePanelProps {
