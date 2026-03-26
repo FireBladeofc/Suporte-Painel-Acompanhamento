@@ -144,11 +144,28 @@ def calcular_metricas_gerais(df, colunas):
         n2_mask = df[col_finalizacao].astype(str).str.contains('N2|n2|Sup - N2', case=False, na=False)
         total_n2 = n2_mask.sum()
     
+    # TMA Segregado (Cálculo IQR)
+    tma_normal = None
+    tma_outliers = None
+    if len(tempos_validos) > 0:
+        q1 = tempos_validos.quantile(0.25)
+        q3 = tempos_validos.quantile(0.75)
+        iqr = q3 - q1
+        limite_superior = round(q3 + 1.5 * iqr, 2)
+        
+        normais = tempos_validos[tempos_validos <= limite_superior]
+        outliers = tempos_validos[tempos_validos > limite_superior]
+        
+        tma_normal = round(normais.mean(), 2) if len(normais) > 0 else None
+        tma_outliers = round(outliers.mean(), 2) if len(outliers) > 0 else None
+        
     return {
         'total_registros': len(df),
         'contatos_unicos': df[col_cliente].nunique(),
         'tempo_medio_atendimento': round(tempos_validos.mean(), 2) if len(tempos_validos) > 0 else None,
         'tempo_medio_espera': tempo_espera_medio,
+        'tma_normal': tma_normal,
+        'tma_outliers': tma_outliers,
         'nps_medio': nps_medio,
         'taxa_rechamadas': taxa_rechamadas,
         'taxa_avaliacao': taxa_avaliacao,

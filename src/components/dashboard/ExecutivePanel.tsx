@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { SupportTicket, AgentMetrics } from '@/types/support';
 import { KPICard } from './KPICard';
 import { useUniqueContacts } from '@/hooks/useUniqueContacts';
+import { executarAnaliseAvancada } from '@/data/advancedAnalysis';
 import { motion } from 'framer-motion';
 import {
   Headphones,
@@ -21,8 +23,12 @@ interface ExecutivePanelProps {
 
 export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
   const uniqueMetrics = useUniqueContacts(tickets);
-  const { baseConsolidada } = uniqueMetrics;
+  const analise = useMemo(
+    () => executarAnaliseAvancada(tickets, agentMetrics),
+    [tickets, agentMetrics]
+  );
 
+  const { tmaNormal, tmaOutliers } = analise.metricasGerais;
   const totalRegistros = tickets.length;
 
   // TME - Tempo Médio de Espera (minutos) — coluna "espera", sobre tickets brutos (alinhado com Python)
@@ -101,17 +107,21 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
         />
 
         <KPICard
-          title="TMA"
-          value={(() => {
-            const validTickets = tickets.filter(t => t.duracao > 0);
-            if (validTickets.length === 0) return '0min';
-            const avgMinutes = validTickets.reduce((acc, t) => acc + t.duracao, 0) / validTickets.length;
-            return formatDuration(Math.round(avgMinutes));
-          })()}
-          subtitle="Tempo médio de atendimento"
+          title="TMA Operacional"
+          value={formatDuration(Math.round(tmaNormal || 0))}
+          subtitle="Média sem Outliers"
           icon={Timer}
-          variant="primary"
+          variant="success"
           delay={1}
+        />
+
+        <KPICard
+          title="TMA Crítico"
+          value={formatDuration(Math.round(tmaOutliers || 0))}
+          subtitle="Média de Outliers"
+          icon={AlertCircle}
+          variant="warning"
+          delay={2}
         />
 
         <KPICard
@@ -160,9 +170,9 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
 
 
         <KPICard
-          title="Total de Registros"
+          title="Total de Atendimentos"
           value={totalRegistros.toLocaleString('pt-BR')}
-          subtitle="Total de Atendimentos"
+          subtitle="Registros Totais"
           icon={FileSpreadsheet}
           delay={9}
         />

@@ -468,19 +468,31 @@ export function executarAnaliseAvancada(
     t.finalizacao.toLowerCase().includes('sup - n2')
   ).length;
 
+  const outliersTMA = analisarOutliersTMA(tickets);
+  
+  // TMA Segregado
+  const ticketsNormais = ticketsComDuracao.filter(t => t.duracao <= outliersTMA.limiteSuperiorMinutos);
+  const tmaNormal = ticketsNormais.length > 0
+    ? round(ticketsNormais.reduce((a, t) => a + t.duracao, 0) / ticketsNormais.length, 2)
+    : null;
+
+  const metricasGerais = {
+    totalRegistros: tickets.length,
+    contatosUnicos,
+    tempoMedioAtendimento,
+    tempoMedioEspera,
+    npsMedio,
+    taxaRechamadas,
+    taxaAvaliacao,
+    avaliacoesPendentes,
+    totalFinalizacoesN2: n2Count,
+    tmaNormal,
+    tmaOutliers: outliersTMA.duracaoMediaOutliers > 0 ? outliersTMA.duracaoMediaOutliers : null,
+  };
+
   return {
-    metricasGerais: {
-      totalRegistros: tickets.length,
-      contatosUnicos,
-      tempoMedioAtendimento,
-      tempoMedioEspera,
-      npsMedio,
-      taxaRechamadas,
-      taxaAvaliacao,
-      avaliacoesPendentes,
-      totalFinalizacoesN2: n2Count,
-    },
-    outliersTMA: analisarOutliersTMA(tickets),
+    metricasGerais,
+    outliersTMA,
     correlacaoNPSProblema: analisarCorrelacaoNPSProblema(tickets),
     casosLongos: analisarCasosLongos(tickets),
     motivosFinalizacao: analisarMotivosFinalizacao(tickets),

@@ -93,6 +93,8 @@ export interface AnaliseAvancadaResult {
     taxaAvaliacao: number;
     avaliacoesPendentes: number;
     totalFinalizacoesN2: number;
+    tmaNormal: number | null;
+    tmaOutliers: number | null;
   };
   outliersTMA: OutliersTMAResult;
   correlacaoNPSProblema: CorrelacaoNPSItem[];
