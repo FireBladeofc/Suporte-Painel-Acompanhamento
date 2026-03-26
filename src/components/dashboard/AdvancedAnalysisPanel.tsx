@@ -250,7 +250,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
 
       {/* 2. Detratores */}
       <SectionCard
-        title="Análise de Detratores (NPS ≤ 6)"
+        title="Análise de Detratores (NPS < 4)"
         icon={ShieldAlert}
         badge={detratores.total > 0 ? `${detratores.total} detratores` : '✅ Nenhum'}
         badgeVariant={detratores.total > 0 ? 'critical' : 'success'}
@@ -298,7 +298,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
           </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground">
-            <p className="text-sm">✅ Excelente! Nenhum detrator (NPS ≤ 6) identificado no período.</p>
+            <p className="text-sm">✅ Excelente! Nenhum detrator (NPS {"<"} 4) identificado no período.</p>
           </div>
         )}
       </SectionCard>
