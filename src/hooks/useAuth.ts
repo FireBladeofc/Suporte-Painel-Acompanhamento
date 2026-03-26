@@ -12,6 +12,38 @@ interface UserRole {
   created_at: string;
 }
 
+/**
+ * Traduz mensagens de erro comuns do Supabase Auth para português
+ */
+const translateAuthError = (message: string): string => {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('email not confirmed')) {
+    return 'E-mail não confirmado. Por favor, verifique sua caixa de entrada para ativar sua conta.';
+  }
+  if (lowerMessage.includes('invalid login credentials')) {
+    return 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
+  }
+  if (lowerMessage.includes('user already registered')) {
+    return 'Este e-mail já está cadastrado no sistema.';
+  }
+  if (lowerMessage.includes('password should be at least 6 characters')) {
+    return 'A senha deve ter pelo menos 6 caracteres.';
+  }
+  if (lowerMessage.includes('rate limit exceeded')) {
+    return 'Muitas tentativas em pouco tempo. Por favor, aguarde alguns minutos antes de tentar novamente.';
+  }
+  if (lowerMessage.includes('signup_disabled')) {
+    return 'O cadastro de novos usuários está temporariamente desativado.';
+  }
+  if (lowerMessage.includes('email address not authorized')) {
+    return 'Este endereço de e-mail não está autorizado a acessar o sistema.';
+  }
+  
+  // Mensagem genérica amigável se não houver mapeamento específico
+  return message; 
+};
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -87,7 +119,7 @@ export function useAuth() {
       if (error) {
         toast({
           title: 'Erro ao entrar',
-          description: error.message,
+          description: translateAuthError(error.message),
           variant: 'destructive',
         });
         return { error };
@@ -125,7 +157,7 @@ export function useAuth() {
       if (error) {
         toast({
           title: 'Erro ao cadastrar',
-          description: error.message,
+          description: translateAuthError(error.message),
           variant: 'destructive',
         });
         return { error };

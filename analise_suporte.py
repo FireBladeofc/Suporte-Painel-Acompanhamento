@@ -187,7 +187,7 @@ def calcular_metricas_por_colaborador(df, col_colaborador, col_tempo, col_client
             'total_atendimentos': len(df_colab),
             'percentual_participacao': round((len(df_colab) / total_atendimentos) * 100, 2),
             'tempo_medio_minutos': round(tempos.mean(), 2) if len(tempos) > 0 else None,
-            'clientes_unicos': clientes.nunique(),
+            'clientes_unicos': int(clientes_unicos),
             'possiveis_duplicados': duplicados,
             'nps_medio': nps_dados['media'],
             'avaliacoes_total': nps_dados['total'],

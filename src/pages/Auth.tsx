@@ -7,7 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Mail, Lock, BarChart3 } from 'lucide-react';
+import { Loader2, Mail, Lock, BarChart3, CheckCircle2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const emailSchema = z.string().email('E-mail inválido').max(255, 'E-mail muito longo');
 const passwordSchema = z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(72, 'Senha muito longa');
@@ -18,6 +27,7 @@ export default function Auth() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [isSignUpSuccessOpen, setIsSignUpSuccessOpen] = useState(false);
   
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
@@ -59,8 +69,11 @@ export default function Auth() {
           navigate('/', { replace: true });
         }
       } else {
-        await signUp(email, password);
-        setActiveTab('login');
+        const { error } = await signUp(email, password);
+        if (!error) {
+          setIsSignUpSuccessOpen(true);
+          setActiveTab('login');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -215,6 +228,28 @@ export default function Auth() {
           </form>
         </Tabs>
       </Card>
+
+      <AlertDialog open={isSignUpSuccessOpen} onOpenChange={setIsSignUpSuccessOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="p-3 rounded-full bg-green-500/10">
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
+              </div>
+            </div>
+            <AlertDialogTitle className="text-center text-xl">Cadastro Realizado!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              Enviamos um link de confirmação para o e-mail <strong>{email}</strong>. 
+              Por favor, verifique sua caixa de entrada para ativar sua conta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction className="w-full sm:w-auto px-8">
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
