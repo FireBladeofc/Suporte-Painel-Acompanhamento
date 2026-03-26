@@ -292,7 +292,7 @@ export function analisarMotivosFinalizacao(tickets: SupportTicket[]): MotivosFin
 // ─── Análise de Detratores ──────────────────────────────────────────────────
 
 export function analisarDetratores(tickets: SupportTicket[]): DetratoresResult {
-  const detratores = tickets.filter(t => t.nps !== null && t.nps <= 6);
+  const detratores = tickets.filter(t => t.nps !== null && t.nps < 4);
 
   if (detratores.length === 0) {
     return { total: 0, motivosPrincipais: {}, amostra: [] };
@@ -398,7 +398,7 @@ export function gerarPlanoAcaoSemanal(
   }
 
   // 4. NPS
-  if (npsMedio !== null && npsMedio < 7.5) {
+  if (npsMedio !== null && npsMedio < 4) {
     plano.push({
       area: 'Satisfação',
       status: 'ALERTA',

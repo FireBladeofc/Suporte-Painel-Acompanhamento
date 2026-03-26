@@ -180,7 +180,7 @@ def calcular_metricas_por_colaborador(df, col_colaborador, col_tempo, col_client
             nps_dados['pendentes'] = int(pendentes)
             if len(validos) > 0:
                 nps_dados['media'] = round(validos.mean(), 2)
-                nps_dados['detratores'] = len(validos[validos <= 6])
+                nps_dados['detratores'] = len(validos[validos < 4])
         
         metricas.append({
             'colaborador': colaborador,
@@ -208,7 +208,7 @@ def analisar_detratores(df, colunas):
         
     # Filtra detratores
     nps_vals = pd.to_numeric(df[col_nps], errors='coerce')
-    mask_detratores = nps_vals <= 6
+    mask_detratores = nps_vals < 4
     df_detratores = df[mask_detratores].copy()
     
     if len(df_detratores) == 0:
@@ -517,12 +517,12 @@ def gerar_insights(metricas_gerais, metricas_colaborador, motivos,
     nps = metricas_gerais.get('nps_medio')
     taxa_aval = metricas_gerais.get('taxa_avaliacao', 0)
     pendentes = metricas_gerais.get('avaliacoes_pendentes', 0)
-    if nps and nps < 7:
+    if nps and nps < 4:
         insights.append({
             'tipo': 'critico',
             'titulo': 'NPS Abaixo do Esperado',
             'mensagem': (
-                f"NPS médio de {nps:.2f}/10 indica insatisfação. "
+                f"NPS médio de {nps:.2f}/5 indica insatisfação. "
                 f"Taxa de resposta é de apenas {taxa_aval:.1f}% ({pendentes} avaliações pendentes). "
                 "Aumentar a coleta de feedback e auditar detratores são prioridades imediatas."
             )
@@ -615,8 +615,8 @@ def gerar_insights(metricas_gerais, metricas_colaborador, motivos,
             'tipo': 'recomendacao',
             'titulo': 'Correlação NPS × Tipo de Problema',
             'mensagem': (
-                f"Melhor NPS: '{melhor['finalizacao']}' ({melhor['nps_medio']:.2f}/10 com {melhor['total_avaliacoes']} avaliações). "
-                f"Pior NPS: '{pior['finalizacao']}' ({pior['nps_medio']:.2f}/10 com {pior['total_avaliacoes']} avaliações). "
+                f"Melhor NPS: '{melhor['finalizacao']}' ({melhor['nps_medio']:.2f}/5 com {melhor['total_avaliacoes']} avaliações). "
+                f"Pior NPS: '{pior['finalizacao']}' ({pior['nps_medio']:.2f}/5 com {pior['total_avaliacoes']} avaliações). "
                 "Investigar o que diferencia o atendimento nesses dois tipos de problema."
             )
         })
@@ -693,7 +693,7 @@ def gerar_relatorio_markdown(dados, caminho):
             detratores = dados.get('analise_detratores', {})
             if detratores and detratores.get('total', 0) > 0:
                 f.write(f"## 3. Análise de Insatisfação (Detratores)\n\n")
-                f.write(f"Identificamos **{detratores['total']} avaliações baixas** (NPS <= 6). Abaixo, os motivos de finalização mais correntes nesses casos:\n\n")
+                f.write(f"Identificamos **{detratores['total']} avaliações baixas** (NPS < 4). Abaixo, os motivos de finalização mais correntes nesses casos:\n\n")
                 
                 f.write("| Motivo da Finalização (Casos Críticos) | Ocorrências |\n")
                 f.write("| :--- | :---: |\n")
@@ -706,7 +706,7 @@ def gerar_relatorio_markdown(dados, caminho):
                 f.write("- **Feedback:** Aplicar feedback individual nos agentes com maior índice de detratores.\n\n")
             else:
                 f.write("## 3. Análise de Insatisfação\n\n")
-                f.write("✅ **Excelente!** Não foram detectados detratores (NPS <= 6) neste período.\n\n")
+                f.write("✅ **Excelente!** Não foram detectados detratores (NPS < 4) neste período.\n\n")
             
             f.write("---\n\n")
 
@@ -782,7 +782,7 @@ def gerar_walkthrough_analise(dados, caminho):
             
             # Detratores
             if detratores and detratores['total'] > 0:
-                f.write(f"### 🔻 Análise de Detratores (NPS <= 6)\n")
+                f.write(f"### 🔻 Análise de Detratores (NPS < 4)\n")
                 f.write(f"Foram identificados **{detratores['total']} clientes insatisfeitos**. Os principais motivos atrelados a essas notas foram:\n\n")
                 for m, q in detratores['motivos_principais'].items():
                     f.write(f"- **{m}**: {q} ocorrências\n")
