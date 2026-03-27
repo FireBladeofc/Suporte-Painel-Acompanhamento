@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -99,12 +100,30 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
                       </h3>
                       <Badge 
                         variant="secondary" 
-                        className={collaborator.role === 'N1' 
-                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
-                          : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                        }
+                        className={cn(
+                          'border-opacity-30',
+                          (() => {
+                            switch (collaborator.role) {
+                              case 'N1': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                              case 'N2': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+                              case 'implantador': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                              case 'financeiro': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                              case 'cs': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+                              case 'tecnico_treinamento': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+                              default: return 'bg-muted/20 text-muted-foreground border-muted/30';
+                            }
+                          })()
+                        )}
                       >
-                        {collaborator.role}
+                        {(() => {
+                          switch (collaborator.role) {
+                            case 'implantador': return 'Implantador';
+                            case 'financeiro': return 'Financeiro';
+                            case 'cs': return 'Customer Success';
+                            case 'tecnico_treinamento': return 'Treinamento';
+                            default: return collaborator.role;
+                          }
+                        })()}
                       </Badge>
                     </div>
                   </div>

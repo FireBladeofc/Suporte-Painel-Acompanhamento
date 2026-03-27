@@ -19,8 +19,8 @@ export function FeedbackPanel({ tickets = [], agentMetrics = [] }: FeedbackPanel
   const [selectedCollaborator, setSelectedCollaborator] = useState<Collaborator | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const handleAddCollaborator = async (name: string, role: 'N1' | 'N2') => {
-    await addCollaborator(name, role);
+  const handleAddCollaborator = async (name: string, role: string) => {
+    await addCollaborator(name, role as any);
     setShowAddModal(false);
   };
 

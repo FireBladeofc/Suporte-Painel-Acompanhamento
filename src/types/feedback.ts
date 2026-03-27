@@ -1,7 +1,7 @@
 export interface Collaborator {
   id: string;
   name: string;
-  role: 'N1' | 'N2';
+  role: 'N1' | 'N2' | 'implantador' | 'financeiro' | 'cs' | 'tecnico_treinamento';
   created_at: string;
   updated_at: string;
 }

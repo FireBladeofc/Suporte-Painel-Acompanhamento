@@ -16,6 +16,8 @@ import {
   CategoriaMotivo,
   DetratoresResult,
   PlanoAcaoItem,
+  LeadRiscoItem,
+  LeadsComRiscoResult,
   AnaliseAvancadaResult,
 } from '@/types/analysis';
 
@@ -429,6 +431,52 @@ export function gerarPlanoAcaoSemanal(
   return plano;
 }
 
+// ─── Análise de Leads com Risco ───────────────────────────────────────────
+
+export function analisarLeadsComRisco(
+  tickets: SupportTicket[],
+  limiteTMA: number
+): LeadsComRiscoResult {
+  const leadMap = new Map<string, SupportTicket[]>();
+  
+  tickets.forEach(t => {
+    const leadNum = t.lead_number;
+    if (!leadNum) return;
+    const arr = leadMap.get(leadNum) || [];
+    arr.push(t);
+    leadMap.set(leadNum, arr);
+  });
+
+  const leads: LeadRiscoItem[] = [];
+
+  leadMap.forEach((ticketsLead, leadNumber) => {
+    if (ticketsLead.length >= 3) {
+      const totalDuracao = ticketsLead.reduce((acc, t) => acc + t.duracao, 0);
+      const tmaLead = totalDuracao / ticketsLead.length;
+
+      if (tmaLead > limiteTMA) {
+        // Pega o agente do contato mais recente
+        const ultimoTicket = [...ticketsLead].sort((a, b) => 
+          new Date(b.data_finalizacao).getTime() - new Date(a.data_finalizacao).getTime()
+        )[0];
+
+        leads.push({
+          leadNumber,
+          agente: ultimoTicket.agente,
+          tmaMinutos: round(tmaLead),
+          rechamadas: ticketsLead.length - 1,
+          finalizacao: ultimoTicket.finalizacao
+        });
+      }
+    }
+  });
+
+  return {
+    total: leads.length,
+    leads: leads.sort((a, b) => (b.rechamadas * b.tmaMinutos) - (a.rechamadas * a.tmaMinutos))
+  };
+}
+
 // ─── Função Principal Orquestradora ─────────────────────────────────────────
 
 export function executarAnaliseAvancada(
@@ -498,6 +546,7 @@ export function executarAnaliseAvancada(
     motivosFinalizacao: analisarMotivosFinalizacao(tickets),
     detratores: analisarDetratores(tickets),
     planoAcao: gerarPlanoAcaoSemanal(tickets, agentMetrics),
+    leadsComRisco: analisarLeadsComRisco(tickets, outliersTMA.limiteSuperiorMinutos),
   };
 }
 

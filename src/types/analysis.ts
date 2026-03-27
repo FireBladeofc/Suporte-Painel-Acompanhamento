@@ -82,6 +82,19 @@ export interface PlanoAcaoItem {
   metaSemana: string;
 }
 
+export interface LeadRiscoItem {
+  leadNumber: string;
+  agente: string;
+  tmaMinutos: number;
+  rechamadas: number;
+  finalizacao: string;
+}
+
+export interface LeadsComRiscoResult {
+  total: number;
+  leads: LeadRiscoItem[];
+}
+
 export interface AnaliseAvancadaResult {
   metricasGerais: {
     totalRegistros: number;
@@ -102,4 +115,5 @@ export interface AnaliseAvancadaResult {
   motivosFinalizacao: MotivosFinalizacaoResult;
   detratores: DetratoresResult;
   planoAcao: PlanoAcaoItem[];
+  leadsComRisco: LeadsComRiscoResult;
 }

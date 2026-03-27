@@ -17,12 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 interface AddCollaboratorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (name: string, role: 'N1' | 'N2') => Promise<void>;
+  onAdd: (name: string, role: string) => Promise<void>;
 }
 
 export function AddCollaboratorModal({ open, onOpenChange, onAdd }: AddCollaboratorModalProps) {
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'N1' | 'N2'>('N1');
+  const [role, setRole] = useState<string>('N1');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -59,7 +59,7 @@ export function AddCollaboratorModal({ open, onOpenChange, onAdd }: AddCollabora
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
@@ -84,26 +84,32 @@ export function AddCollaboratorModal({ open, onOpenChange, onAdd }: AddCollabora
             <Label>Cargo/Função</Label>
             <RadioGroup
               value={role}
-              onValueChange={(value) => setRole(value as 'N1' | 'N2')}
-              className="flex gap-4"
+              onValueChange={setRole}
+              className="grid grid-cols-2 gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="N1" id="n1" />
-                <Label htmlFor="n1" className="cursor-pointer">
-                  <span className="font-medium">N1</span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (Primeiro Nível)
-                  </span>
-                </Label>
+                <RadioGroupItem value="N1" id="role-n1" />
+                <Label htmlFor="role-n1" className="cursor-pointer font-medium">N1 <span className="text-[10px] text-muted-foreground ml-0.5">(Primeiro Nível)</span></Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="N2" id="n2" />
-                <Label htmlFor="n2" className="cursor-pointer">
-                  <span className="font-medium">N2</span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (Segundo Nível)
-                  </span>
-                </Label>
+                <RadioGroupItem value="N2" id="role-n2" />
+                <Label htmlFor="role-n2" className="cursor-pointer font-medium">N2 <span className="text-[10px] text-muted-foreground ml-0.5">(Segundo Nível)</span></Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="implantador" id="role-implantador" />
+                <Label htmlFor="role-implantador" className="cursor-pointer font-medium">Implantador</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="financeiro" id="role-financeiro" />
+                <Label htmlFor="role-financeiro" className="cursor-pointer font-medium">Financeiro</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="cs" id="role-cs" />
+                <Label htmlFor="role-cs" className="cursor-pointer font-medium">Customer Success</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="tecnico_treinamento" id="role-treinamento" />
+                <Label htmlFor="role-treinamento" className="cursor-pointer font-medium">Analista Treinamento</Label>
               </div>
             </RadioGroup>
           </div>

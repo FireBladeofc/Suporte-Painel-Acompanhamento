@@ -7,9 +7,10 @@ export const collaboratorNameSchema = z
   .min(1, 'Nome é obrigatório')
   .max(100, 'Nome deve ter no máximo 100 caracteres');
 
-export const collaboratorRoleSchema = z.enum(['N1', 'N2'], {
-  errorMap: () => ({ message: 'Cargo deve ser N1 ou N2' }),
-});
+export const collaboratorRoleSchema = z.enum(
+  ['N1', 'N2', 'implantador', 'financeiro', 'cs', 'tecnico_treinamento'],
+  { errorMap: () => ({ message: 'Cargo inválido' }) }
+);
 
 export const addCollaboratorSchema = z.object({
   name: collaboratorNameSchema,

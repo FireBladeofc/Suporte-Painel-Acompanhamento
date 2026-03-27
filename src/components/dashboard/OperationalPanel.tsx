@@ -32,8 +32,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.4, ease: "easeOut" as const }
   }
@@ -76,7 +76,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
   }, [agentMetrics]);
 
   const ticketsByDate = useMemo(() => getTicketsByDate(tickets), [tickets]);
-  
+
   const ticketsByMotivo = useMemo(() => getTicketsByFinalizacao(tickets), [tickets]);
 
   // TMA and Volume targets for the performance matrix
@@ -93,7 +93,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
       .map(a => {
         const tma = a.tma;
         const volume = a.leadsUnicos;
-        
+
         // Determine quadrant and color based on position
         // Baixo TMA + Alto Volume = Alta Performance
         // Alto TMA + Alto Volume = Produtivo mas Lento
@@ -101,7 +101,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
         // Alto TMA + Baixo Volume = Atenção Crítica
         let quadrant: string;
         let color: string;
-        
+
         if (tma <= TMA_TARGET && volume >= VOLUME_MEDIO) {
           quadrant = 'Alta Performance';
           color = 'hsl(160, 84%, 50%)'; // Green
@@ -115,7 +115,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
           quadrant = 'Atenção Crítica';
           color = 'hsl(0, 75%, 55%)'; // Red
         }
-        
+
         return {
           name: a.agente,
           tma,
@@ -130,7 +130,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
   // Rankings
   const rankings = useMemo(() => {
     const sorted = [...agentMetrics].filter(a => a.leadsUnicos >= 2);
-    
+
     return {
       maiorVolume: sorted.sort((a, b) => b.leadsUnicos - a.leadsUnicos).slice(0, 5),
       melhorTMA: sorted.filter(a => a.tma > 0).sort((a, b) => a.tma - b.tma).slice(0, 5),
@@ -203,7 +203,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Atendimentos por Agente */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="bg-gradient-mesh border border-border/50 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300"
         >
@@ -244,7 +244,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
         </motion.div>
 
         {/* Evolução Temporal */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="bg-gradient-mesh border border-border/50 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300"
         >
@@ -264,25 +264,25 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(225 15% 15%)" vertical={false} />
-                <XAxis 
-                  dataKey="dateDisplay" 
+                <XAxis
+                  dataKey="dateDisplay"
                   tick={{ fill: 'hsl(225 10% 50%)', fontSize: 10 }}
                   axisLine={false}
                 />
                 <YAxis tick={{ fill: 'hsl(225 10% 50%)', fontSize: 10 }} axisLine={false} />
-                <Tooltip 
+                <Tooltip
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.dateDisplay || ''}
                   contentStyle={{
-                    background: 'hsl(225 20% 6% / 0.95)', 
-                    border: '1px solid hsl(225 15% 20%)', 
+                    background: 'hsl(225 20% 6% / 0.95)',
+                    border: '1px solid hsl(225 15% 20%)',
                     borderRadius: '12px',
                     backdropFilter: 'blur(12px)'
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="hsl(160, 84%, 50%)" 
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="hsl(160, 84%, 50%)"
                   strokeWidth={2.5}
                   fill="url(#areaGradient)"
                   dot={false}
@@ -294,7 +294,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
         </motion.div>
 
         {/* Distribuição por Motivo */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="bg-gradient-mesh border border-border/50 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300"
         >
@@ -304,47 +304,67 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
             </div>
             Distribuição por Motivo de Finalização
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={ticketsByMotivo.slice(0, 8)}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                  labelLine={{ stroke: 'hsl(225 10% 40%)' }}
-                >
-                  {ticketsByMotivo.slice(0, 8).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    background: 'hsl(225 20% 6% / 0.95)', 
-                    border: '1px solid hsl(225 15% 20%)', 
-                    borderRadius: '12px' 
-                  }}
-                  formatter={(value: number, name: string) => [`${value} atendimentos`, name]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            {ticketsByMotivo.slice(0, 8).map((item, i) => (
-              <span key={i} className="text-[10px] px-2.5 py-1.5 rounded-lg bg-muted/50 border border-border/50 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                <span className="truncate max-w-[140px]" title={item.name}>{item.name}</span>
-              </span>
-            ))}
+          <div className="space-y-6">
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={useMemo(() => {
+                      const threshold = 0.03; // 3%
+                      const total = ticketsByMotivo.reduce((acc, cur) => acc + cur.value, 0);
+                      const main = ticketsByMotivo.filter(i => (i.value / total) >= threshold);
+                      const others = ticketsByMotivo.filter(i => (i.value / total) < threshold);
+                      if (others.length === 0) return [...main].sort((a, b) => b.value - a.value);
+                      const othersValue = others.reduce((acc, cur) => acc + cur.value, 0);
+                      return [...main, { name: 'Outros motivos', value: othersValue }].sort((a, b) => b.value - a.value);
+                    }, [ticketsByMotivo])}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    label={({ percent }) => percent >= 0.04 ? `${(percent * 100).toFixed(0)}%` : ''}
+                    labelLine={false}
+                  >
+                    {ticketsByMotivo.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: 'hsl(225 20% 6% / 0.95)',
+                      border: '1px solid hsl(225 15% 20%)',
+                      borderRadius: '12px',
+                    }}
+                    formatter={(value: number, name: string) => [`${value} atendimentos`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legenda na parte inferior (Todos os motivos) */}
+            <div className="flex flex-wrap gap-x-4 gap-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar pt-2 border-t border-border/10">
+              {useMemo(() => [...ticketsByMotivo].sort((a, b) => b.value - a.value), [ticketsByMotivo]).map((item, i) => (
+                <div key={i} className="flex items-center gap-2 group cursor-default">
+                  <div 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform group-hover:scale-125" 
+                    style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} 
+                  />
+                  <span className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors truncate max-w-[150px]" title={item.name}>
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-mono font-medium text-foreground/70">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
         {/* TMA x Volume - 4 Quadrant Performance Matrix */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="bg-gradient-mesh border border-border/50 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300"
         >
@@ -359,58 +379,58 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ bottom: 30, left: 10, top: 20, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(225 15% 15%)" />
-                  
+
                   {/* X Axis - TMA */}
-                  <XAxis 
+                  <XAxis
                     type="number"
-                    dataKey="tma" 
-                    name="TMA (min)" 
-                    tick={{ fill: 'hsl(225 10% 50%)', fontSize: 10 }} 
+                    dataKey="tma"
+                    name="TMA (min)"
+                    tick={{ fill: 'hsl(225 10% 50%)', fontSize: 10 }}
                     label={{ value: 'TMA (min) →', position: 'insideBottom', offset: -20, fill: 'hsl(225 10% 50%)', fontSize: 11 }}
                     axisLine={{ stroke: 'hsl(225 15% 25%)' }}
                     domain={['auto', 'auto']}
                   />
-                  
+
                   {/* Y Axis - Volume */}
-                  <YAxis 
+                  <YAxis
                     type="number"
-                    dataKey="volume" 
-                    name="Volume" 
+                    dataKey="volume"
+                    name="Volume"
                     tick={{ fill: 'hsl(225 10% 50%)', fontSize: 10 }}
                     label={{ value: 'Volume ↑', angle: -90, position: 'insideLeft', fill: 'hsl(225 10% 50%)', fontSize: 11 }}
                     axisLine={{ stroke: 'hsl(225 15% 25%)' }}
                   />
-                  
+
                   {/* Reference Line - TMA Target (Vertical) */}
-                  <ReferenceLine 
-                    x={TMA_TARGET} 
-                    stroke="hsl(225 10% 50%)" 
-                    strokeDasharray="5 5" 
+                  <ReferenceLine
+                    x={TMA_TARGET}
+                    stroke="hsl(225 10% 50%)"
+                    strokeDasharray="5 5"
                     strokeWidth={2}
-                    label={{ 
-                      value: `Meta TMA: ${TMA_TARGET}min`, 
-                      position: 'top', 
-                      fill: 'hsl(225 10% 60%)', 
-                      fontSize: 9 
+                    label={{
+                      value: `Meta TMA: ${TMA_TARGET}min`,
+                      position: 'top',
+                      fill: 'hsl(225 10% 60%)',
+                      fontSize: 9
                     }}
                   />
-                  
+
                   {/* Reference Line - Volume Médio (Horizontal) */}
-                  <ReferenceLine 
-                    y={VOLUME_MEDIO} 
-                    stroke="hsl(225 10% 50%)" 
-                    strokeDasharray="5 5" 
+                  <ReferenceLine
+                    y={VOLUME_MEDIO}
+                    stroke="hsl(225 10% 50%)"
+                    strokeDasharray="5 5"
                     strokeWidth={2}
-                    label={{ 
-                      value: `Média: ${VOLUME_MEDIO}`, 
-                      position: 'right', 
-                      fill: 'hsl(225 10% 60%)', 
-                      fontSize: 9 
+                    label={{
+                      value: `Média: ${VOLUME_MEDIO}`,
+                      position: 'right',
+                      fill: 'hsl(225 10% 60%)',
+                      fontSize: 9
                     }}
                   />
-                  
+
                   {/* Custom Tooltip */}
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ strokeDasharray: '3 3', stroke: 'hsl(225 10% 40%)' }}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
@@ -430,7 +450,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
                                   NPS: <span className="text-primary font-mono font-semibold">{data.nps.toFixed(1)}</span>
                                 </p>
                               )}
-                              <p className="text-xs mt-2 px-2 py-1 rounded-lg font-medium" style={{ 
+                              <p className="text-xs mt-2 px-2 py-1 rounded-lg font-medium" style={{
                                 backgroundColor: `${data.color}20`,
                                 color: data.color
                               }}>
@@ -443,12 +463,12 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
                       return null;
                     }}
                   />
-                  
+
                   {/* Scatter Points with quadrant-based colors */}
                   <Scatter name="Agentes" data={tmaVolumeData}>
                     {tmaVolumeData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
+                      <Cell
+                        key={`cell-${index}`}
                         fill={entry.color}
                         stroke="hsl(225 25% 3%)"
                         strokeWidth={2}
@@ -463,7 +483,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
               </div>
             )}
           </div>
-          
+
           {/* Reference Lines Info + Quadrant Legend */}
           <div className="mt-4 pt-4 border-t border-border/30">
             <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
@@ -502,42 +522,42 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
           Rankings de Performance
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <RankingCard 
-            title="Maior Volume" 
+          <RankingCard
+            title="Maior Volume"
             icon={Award}
-           items={rankings.maiorVolume.map((a, i) => ({ 
-              rank: i + 1, 
-              agente: a.agente, 
-              value: `${a.leadsUnicos}` 
-            }))} 
-          />
-          <RankingCard 
-            title="Melhor TMA" 
-            icon={Clock}
-            items={rankings.melhorTMA.map((a, i) => ({ 
-              rank: i + 1, 
-              agente: a.agente, 
-              value: `${a.tma}min` 
-            }))} 
+            items={rankings.maiorVolume.map((a, i) => ({
+              rank: i + 1,
+              agente: a.agente,
+              value: `${a.leadsUnicos}`
+            }))}
           />
           <RankingCard
-            title="Melhor NPS" 
-            icon={Star}
-            items={rankings.melhorNPS.map((a, i) => ({ 
-              rank: i + 1, 
-              agente: a.agente, 
-              value: `${a.npsMedio}` 
-            }))} 
+            title="Melhor TMA"
+            icon={Clock}
+            items={rankings.melhorTMA.map((a, i) => ({
+              rank: i + 1,
+              agente: a.agente,
+              value: `${a.tma}min`
+            }))}
           />
-          <RankingCard 
-            title="Maior Rechamadas" 
+          <RankingCard
+            title="Melhor NPS"
+            icon={Star}
+            items={rankings.melhorNPS.map((a, i) => ({
+              rank: i + 1,
+              agente: a.agente,
+              value: `${a.npsMedio}`
+            }))}
+          />
+          <RankingCard
+            title="Maior Rechamadas"
             icon={RefreshCw}
             variant="warning"
-            items={rankings.maiorRechamadas.map((a, i) => ({ 
-              rank: i + 1, 
-              agente: a.agente, 
-              value: `${a.taxaRechamadas}%` 
-            }))} 
+            items={rankings.maiorRechamadas.map((a, i) => ({
+              rank: i + 1,
+              agente: a.agente,
+              value: `${a.taxaRechamadas}%`
+            }))}
           />
         </div>
       </motion.div>
@@ -554,7 +574,7 @@ interface RankingCardProps {
 
 function RankingCard({ title, icon: Icon, items, variant = 'default' }: RankingCardProps) {
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ scale: 1.02, y: -2 }}
       transition={{ duration: 0.2 }}
       className="bg-gradient-mesh border border-border/50 rounded-2xl p-5 hover:border-primary/30 transition-all duration-300"
@@ -576,8 +596,8 @@ function RankingCard({ title, icon: Icon, items, variant = 'default' }: RankingC
           <div key={i} className="flex items-center gap-2">
             <span className={cn(
               "w-6 h-6 rounded-lg text-[10px] font-bold flex items-center justify-center flex-shrink-0 transition-all",
-              i === 0 
-                ? 'bg-gradient-primary text-primary-foreground shadow-lg' 
+              i === 0
+                ? 'bg-gradient-primary text-primary-foreground shadow-lg'
                 : 'bg-muted/50 text-muted-foreground'
             )}>
               {item.rank}

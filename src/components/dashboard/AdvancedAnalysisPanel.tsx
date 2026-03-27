@@ -248,7 +248,6 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
         )}
       </SectionCard>
 
-      {/* 2. Detratores */}
       <SectionCard
         title="Análise de Detratores (NPS < 4)"
         icon={ShieldAlert}
@@ -712,6 +711,75 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
             </div>
           )}
         </div>
+      </SectionCard>
+
+      {/* 7. Leads com Risco (TMA + Rechamadas) */}
+      <SectionCard
+        title="Leads com Risco (TMA + Rechamadas)"
+        icon={ShieldAlert}
+        badge={analise.leadsComRisco.total > 0 ? `${analise.leadsComRisco.total} leads` : 'Nenhum'}
+        badgeVariant={analise.leadsComRisco.total > 0 ? 'critical' : 'success'}
+        defaultExpanded={analise.leadsComRisco.total > 0}
+      >
+        {analise.leadsComRisco.total > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+              <div>
+                <p className="font-bold text-foreground text-lg">{analise.leadsComRisco.total}</p>
+                <p className="text-sm text-muted-foreground">leads críticos identificados com alta recorrência e lentidão</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Lead / Instância
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Último Agente
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      TMA Médio
+                    </th>
+                    <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Rechamadas
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analise.leadsComRisco.leads.map((lead, i) => (
+                    <tr
+                      key={i}
+                      className={cn(
+                        'border-b border-border/30 transition-colors hover:bg-muted/20',
+                        i === 0 && 'bg-destructive/5'
+                      )}
+                    >
+                      <td className="py-3 px-4 font-mono text-foreground font-medium">{lead.leadNumber}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{lead.agente}</td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-foreground">
+                        {formatarMinutosParaTexto(lead.tmaMinutos)}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-destructive">
+                        {lead.rechamadas}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-muted-foreground italic px-2">
+              * Critérico: Leads com 3 ou mais contatos e TMA médio superior ao limite estatístico de normalidade.
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-6 text-muted-foreground">
+            <p className="text-sm">✅ Nenhum lead com padrão de risco (alta recorrência + TMA elevado) identificado.</p>
+          </div>
+        )}
       </SectionCard>
     </motion.div>
   );
