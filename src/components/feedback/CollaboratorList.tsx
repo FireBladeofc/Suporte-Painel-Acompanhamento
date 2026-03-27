@@ -29,13 +29,40 @@ interface CollaboratorListProps {
   onDelete: (id: string) => void;
 }
 
+const SUPPORT_ROLES = ['N1', 'N2'];
+
+const roleLabel = (role: string) => {
+  switch (role) {
+    case 'implantador': return 'Implantador';
+    case 'financeiro': return 'Financeiro';
+    case 'cs': return 'Customer Success';
+    case 'tecnico_treinamento': return 'Treinamento';
+    default: return role;
+  }
+};
+
+const roleBadgeClass = (role: string) => {
+  switch (role) {
+    case 'N1': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    case 'N2': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+    case 'implantador': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'financeiro': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    case 'cs': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+    case 'tecnico_treinamento': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+    default: return 'bg-muted/20 text-muted-foreground border-muted/30';
+  }
+};
+
 export function CollaboratorList({ collaborators, loading, onSelect, onDelete }: CollaboratorListProps) {
-  // Get IDs for stats lookup
+  // ─── Todos os hooks ANTES de qualquer early return (Rules of Hooks) ───
   const collaboratorIds = useMemo(() => collaborators.map(c => c.id), [collaborators]);
   const { stats, loading: statsLoading } = useCollaboratorStats(collaboratorIds);
+  const supportCollaborators = useMemo(() => collaborators.filter(c => SUPPORT_ROLES.includes(c.role)), [collaborators]);
+  const otherCollaborators   = useMemo(() => collaborators.filter(c => !SUPPORT_ROLES.includes(c.role)), [collaborators]);
 
   const getStats = (id: string): CollaboratorFeedbackStats | undefined => stats.get(id);
 
+  // ─── Early returns após os hooks ───
   if (loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -70,32 +97,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
     );
   }
 
-  const SUPPORT_ROLES = ['N1', 'N2'];
-  const supportCollaborators = useMemo(() => collaborators.filter(c => SUPPORT_ROLES.includes(c.role)), [collaborators]);
-  const otherCollaborators   = useMemo(() => collaborators.filter(c => !SUPPORT_ROLES.includes(c.role)), [collaborators]);
-
-  const roleLabel = (role: string) => {
-    switch (role) {
-      case 'implantador': return 'Implantador';
-      case 'financeiro': return 'Financeiro';
-      case 'cs': return 'Customer Success';
-      case 'tecnico_treinamento': return 'Treinamento';
-      default: return role;
-    }
-  };
-
-  const roleBadgeClass = (role: string) => {
-    switch (role) {
-      case 'N1': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'N2': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'implantador': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      case 'financeiro': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'cs': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
-      case 'tecnico_treinamento': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
-      default: return 'bg-muted/20 text-muted-foreground border-muted/30';
-    }
-  };
-
+  // ─── Renderização de card individual ───
   const renderCard = (collaborator: Collaborator, index: number, isOther = false) => {
     const collabStats = getStats(collaborator.id);
     return (
@@ -113,7 +115,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
         )}>
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
-              <div 
+              <div
                 className="flex items-center gap-3 flex-1"
                 onClick={() => onSelect(collaborator)}
               >
@@ -134,7 +136,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
                   </Badge>
                 </div>
               </div>
-              
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -166,7 +168,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
               </AlertDialog>
             </div>
 
-            <div 
+            <div
               className="flex items-center gap-4 mb-3 text-xs"
               onClick={() => onSelect(collaborator)}
             >
@@ -183,7 +185,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
               ) : null}
             </div>
 
-            <div 
+            <div
               className="flex items-center justify-between text-sm text-muted-foreground"
               onClick={() => onSelect(collaborator)}
             >
@@ -203,7 +205,7 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
 
   return (
     <div className="space-y-8">
-      {/* Grupo: Equipe de Suporte */}
+      {/* Grupo: Equipe de Suporte (N1/N2) */}
       {supportCollaborators.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
