@@ -14,9 +14,22 @@ import {
   Sparkles,
   ClipboardList,
   Target,
+  Briefcase,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const ROLE_CONFIG: Record<string, { label: string; badgeClass: string }> = {
+  N1: { label: 'Primeiro Nível', badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  N2: { label: 'Segundo Nível', badgeClass: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  implantador: { label: 'Implantador', badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  financeiro: { label: 'Financeiro', badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  cs: { label: 'Customer Success', badgeClass: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  tecnico_treinamento: { label: 'Analista de Treinamento', badgeClass: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+};
+
+const SUPPORT_ROLES = ['N1', 'N2'];
+const isSupport = (role: string) => SUPPORT_ROLES.includes(role);
 
 interface CollaboratorDetailProps {
   collaborator: Collaborator;
@@ -121,8 +134,9 @@ function findAgentMetrics(
 }
 
 export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMetrics = [] }: CollaboratorDetailProps) {
-  // Match this collaborator to their agent metrics from the dashboard
   const matchedAgent = useMemo(() => findAgentMetrics(collaborator.name, agentMetrics), [collaborator.name, agentMetrics]);
+  const roleConfig = ROLE_CONFIG[collaborator.role] ?? { label: collaborator.role, badgeClass: 'bg-muted/20 text-muted-foreground border-muted/30' };
+  const supportRole = isSupport(collaborator.role);
 
 
   return (
@@ -139,15 +153,9 @@ export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMe
                 {collaborator.name}
               </h2>
               <div className="flex items-center gap-3 mt-1">
-                <Badge 
-                  variant="secondary" 
-                  className={collaborator.role === 'N1' 
-                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
-                    : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                  }
-                >
-                  {collaborator.role === 'N1' ? 'Primeiro Nível' : 'Segundo Nível'}
-                </Badge>
+                <Badge variant="secondary" className={roleConfig.badgeClass}>
+                    {roleConfig.label}
+                  </Badge>
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" />
                   Desde {format(new Date(collaborator.created_at), "MMM yyyy", { locale: ptBR })}
@@ -163,43 +171,79 @@ export function CollaboratorDetail({ collaborator, onBack, tickets = [], agentMe
         </CardContent>
       </Card>
 
-      {/* Tabs for Insights, Manual Feedback, and AI Analysis */}
-      <Tabs defaultValue="insights" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="insights" className="gap-2">
-            <Sparkles className="w-4 h-4" />
-            Resumo & Insights
-          </TabsTrigger>
-          <TabsTrigger value="profile" className="gap-2">
-            <ClipboardList className="w-4 h-4" />
-            Ficha
-          </TabsTrigger>
-          <TabsTrigger value="pdi" className="gap-2">
-            <Target className="w-4 h-4" />
-            PDI
-          </TabsTrigger>
-          <TabsTrigger value="manual" className="gap-2">
-            <ClipboardCheck className="w-4 h-4" />
-            Feedback Manual
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      {supportRole ? (
+        /* Suporte (N1/N2): painel completo com métricas de atendimento */
+        <Tabs defaultValue="insights" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="insights" className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              Resumo &amp; Insights
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Ficha
+            </TabsTrigger>
+            <TabsTrigger value="pdi" className="gap-2">
+              <Target className="w-4 h-4" />
+              PDI
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              Feedback Manual
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="insights">
-          <InsightsSummaryTab collaborator={collaborator} agentMetrics={matchedAgent || undefined} tickets={tickets} />
-        </TabsContent>
+          <TabsContent value="insights">
+            <InsightsSummaryTab collaborator={collaborator} agentMetrics={matchedAgent || undefined} tickets={tickets} />
+          </TabsContent>
+          <TabsContent value="profile">
+            <CollaboratorProfileTab collaborator={collaborator} />
+          </TabsContent>
+          <TabsContent value="pdi">
+            <DevelopmentPlanTab collaborator={collaborator} />
+          </TabsContent>
+          <TabsContent value="manual">
+            <ManualFeedbackTab collaborator={collaborator} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Outros cargos: painel simplificado sem métricas de ticket */
+        <Tabs defaultValue="manual" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="manual" className="gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              Feedback Manual
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Ficha
+            </TabsTrigger>
+            <TabsTrigger value="pdi" className="gap-2">
+              <Target className="w-4 h-4" />
+              PDI
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="profile">
-          <CollaboratorProfileTab collaborator={collaborator} />
-        </TabsContent>
+          {/* Banner informativo */}
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <Briefcase className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <p className="text-xs text-amber-300/80">
+              Colaborador de <strong>{roleConfig.label}</strong> — acompanhamento via feedbacks manuais e PDI.
+            </p>
+          </div>
 
-        <TabsContent value="pdi">
-          <DevelopmentPlanTab collaborator={collaborator} />
-        </TabsContent>
-
-        <TabsContent value="manual">
-          <ManualFeedbackTab collaborator={collaborator} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="manual">
+            <ManualFeedbackTab collaborator={collaborator} />
+          </TabsContent>
+          <TabsContent value="profile">
+            <CollaboratorProfileTab collaborator={collaborator} />
+          </TabsContent>
+          <TabsContent value="pdi">
+            <DevelopmentPlanTab collaborator={collaborator} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

@@ -70,129 +70,170 @@ export function CollaboratorList({ collaborators, loading, onSelect, onDelete }:
     );
   }
 
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {collaborators.map((collaborator, index) => {
-        const collabStats = getStats(collaborator.id);
-        
-        return (
-          <motion.div
-            key={collaborator.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card className="bg-card/50 border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer card-glow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div 
-                    className="flex items-center gap-3 flex-1"
-                    onClick={() => onSelect(collaborator)}
+  const SUPPORT_ROLES = ['N1', 'N2'];
+  const supportCollaborators = useMemo(() => collaborators.filter(c => SUPPORT_ROLES.includes(c.role)), [collaborators]);
+  const otherCollaborators   = useMemo(() => collaborators.filter(c => !SUPPORT_ROLES.includes(c.role)), [collaborators]);
+
+  const roleLabel = (role: string) => {
+    switch (role) {
+      case 'implantador': return 'Implantador';
+      case 'financeiro': return 'Financeiro';
+      case 'cs': return 'Customer Success';
+      case 'tecnico_treinamento': return 'Treinamento';
+      default: return role;
+    }
+  };
+
+  const roleBadgeClass = (role: string) => {
+    switch (role) {
+      case 'N1': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'N2': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'implantador': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+      case 'financeiro': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'cs': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+      case 'tecnico_treinamento': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+      default: return 'bg-muted/20 text-muted-foreground border-muted/30';
+    }
+  };
+
+  const renderCard = (collaborator: Collaborator, index: number, isOther = false) => {
+    const collabStats = getStats(collaborator.id);
+    return (
+      <motion.div
+        key={collaborator.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05 }}
+      >
+        <Card className={cn(
+          "border-border/50 hover:border-primary/30 transition-all duration-300 group cursor-pointer card-glow",
+          isOther
+            ? "bg-amber-500/[0.04] hover:border-amber-500/40"
+            : "bg-card/50"
+        )}>
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div 
+                className="flex items-center gap-3 flex-1"
+                onClick={() => onSelect(collaborator)}
+              >
+                <div className="relative">
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg",
+                    isOther ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-gradient-primary"
+                  )}>
+                    {collaborator.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                    {collaborator.name}
+                  </h3>
+                  <Badge variant="secondary" className={cn('border-opacity-30 mt-0.5', roleBadgeClass(collaborator.role))}>
+                    {roleLabel(collaborator.role)}
+                  </Badge>
+                </div>
+              </div>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                        {collaborator.name.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                        {collaborator.name}
-                      </h3>
-                      <Badge 
-                        variant="secondary" 
-                        className={cn(
-                          'border-opacity-30',
-                          (() => {
-                            switch (collaborator.role) {
-                              case 'N1': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                              case 'N2': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-                              case 'implantador': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-                              case 'financeiro': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-                              case 'cs': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
-                              case 'tecnico_treinamento': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
-                              default: return 'bg-muted/20 text-muted-foreground border-muted/30';
-                            }
-                          })()
-                        )}
-                      >
-                        {(() => {
-                          switch (collaborator.role) {
-                            case 'implantador': return 'Implantador';
-                            case 'financeiro': return 'Financeiro';
-                            case 'cs': return 'Customer Success';
-                            case 'tecnico_treinamento': return 'Treinamento';
-                            default: return collaborator.role;
-                          }
-                        })()}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remover colaborador?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação irá remover {collaborator.name} e todas as análises associadas. Esta ação não pode ser desfeita.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => onDelete(collaborator.id)}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          Remover
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remover colaborador?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação irá remover {collaborator.name} e todas as análises associadas. Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(collaborator.id)}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Remover
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
 
-                <div 
-                  className="flex items-center gap-4 mb-3 text-xs"
-                  onClick={() => onSelect(collaborator)}
-                >
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{statsLoading ? '...' : collabStats?.manualFeedbacksCount || 0}</span>
-                    <span className="text-muted-foreground/70">manuais</span>
-                  </div>
-                  {collabStats?.pendingFeedbacksCount ? (
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-warning" />
-                      <span className="text-warning">{collabStats.pendingFeedbacksCount} pendentes</span>
-                    </div>
-                  ) : null}
+            <div 
+              className="flex items-center gap-4 mb-3 text-xs"
+              onClick={() => onSelect(collaborator)}
+            >
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{statsLoading ? '...' : collabStats?.manualFeedbacksCount || 0}</span>
+                <span className="text-muted-foreground/70">manuais</span>
+              </div>
+              {collabStats?.pendingFeedbacksCount ? (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-warning" />
+                  <span className="text-warning">{collabStats.pendingFeedbacksCount} pendentes</span>
                 </div>
+              ) : null}
+            </div>
 
-                <div 
-                  className="flex items-center justify-between text-sm text-muted-foreground"
-                  onClick={() => onSelect(collaborator)}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>
-                      {format(new Date(collaborator.created_at), "dd 'de' MMM", { locale: ptBR })}
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        );
-      })}
+            <div 
+              className="flex items-center justify-between text-sm text-muted-foreground"
+              onClick={() => onSelect(collaborator)}
+            >
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>
+                  {format(new Date(collaborator.created_at), "dd 'de' MMM", { locale: ptBR })}
+                </span>
+              </div>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Grupo: Equipe de Suporte */}
+      {supportCollaborators.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border/50" />
+            <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest px-2">
+              Equipe de Suporte
+            </span>
+            <div className="h-px flex-1 bg-border/50" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {supportCollaborators.map((c, i) => renderCard(c, i, false))}
+          </div>
+        </div>
+      )}
+
+      {/* Grupo: Outras Funções */}
+      {otherCollaborators.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border/50" />
+            <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest px-2">
+              Outras Funções
+            </span>
+            <div className="h-px flex-1 bg-border/50" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {otherCollaborators.map((c, i) => renderCard(c, i, true))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

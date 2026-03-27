@@ -40,7 +40,7 @@ export function useCollaborators() {
     fetchCollaborators();
   }, [fetchCollaborators]);
 
-  const addCollaborator = async (name: string, role: 'N1' | 'N2') => {
+  const addCollaborator = async (name: string, role: string) => {
     try {
       const { data, error } = await supabase
         .from('collaborators')
