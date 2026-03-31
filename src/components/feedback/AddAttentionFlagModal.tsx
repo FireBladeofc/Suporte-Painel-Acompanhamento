@@ -52,21 +52,35 @@ export function AddAttentionFlagModal({ open, onOpenChange, onSubmit }: AddAtten
     }
 
     setSubmitting(true);
-    const success = await onSubmit({
-      flag_date: result.data.flag_date!,
-      severity: result.data.severity! as AttentionFlagSeverity,
-      description: result.data.description!,
-    });
-    if (success) {
+    try {
+      const success = await onSubmit({
+        flag_date: result.data.flag_date!,
+        severity: result.data.severity! as AttentionFlagSeverity,
+        description: result.data.description!,
+      });
+      if (success) {
+        setDate(new Date().toISOString().split('T')[0]);
+        setSeverity('media');
+        setDescription('');
+        onOpenChange(false);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
       setDate(new Date().toISOString().split('T')[0]);
       setSeverity('media');
       setDescription('');
-      onOpenChange(false);
+      setSubmitting(false);
     }
+    onOpenChange(newOpen);
   };
- 
-   return (
-     <Dialog open={open} onOpenChange={onOpenChange}>
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
        <DialogContent className="sm:max-w-md">
          <DialogHeader>
            <DialogTitle>Registrar Sinal de Atenção</DialogTitle>

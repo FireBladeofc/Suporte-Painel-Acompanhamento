@@ -78,12 +78,13 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
   );
 
   // Calculate averages for comparison (using unique contacts)
-  const avgTMA = Math.round(agentMetrics.reduce((acc, a) => acc + a.tma, 0) / agentMetrics.length);
-  const avgTME = Math.round(agentMetrics.reduce((acc, a) => acc + a.tme, 0) / agentMetrics.length);
+  const avgTMA = Math.round(agentMetrics.reduce((acc, a) => acc + a.tma, 0) / agentMetrics.length) || 0;
+  const avgTME = Math.round(agentMetrics.reduce((acc, a) => acc + a.tme, 0) / agentMetrics.length) || 0;
+  const avgTMR = Math.round(agentMetrics.reduce((acc, a) => acc + a.tmr, 0) / agentMetrics.length) || 0;
   const npsValues = agentMetrics.filter(a => a.npsMedio !== null).map(a => a.npsMedio!);
   const avgNPS = npsValues.length > 0 ? npsValues.reduce((a, b) => a + b, 0) / npsValues.length : 0;
-  const avgTaxaRechamadas = Math.round(agentMetrics.reduce((acc, a) => acc + a.taxaRechamadas, 0) / agentMetrics.length);
-  const avgLeadsUnicos = Math.round(agentMetrics.reduce((acc, a) => acc + a.leadsUnicos, 0) / agentMetrics.length);
+  const avgTaxaRechamadas = Math.round(agentMetrics.reduce((acc, a) => acc + a.taxaRechamadas, 0) / agentMetrics.length) || 0;
+  const avgLeadsUnicos = Math.round(agentMetrics.reduce((acc, a) => acc + a.leadsUnicos, 0) / agentMetrics.length) || 0;
 
   return (
     <motion.div
@@ -195,9 +196,11 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
                   <TableCell className="text-center">
                     <span className={cn(
                       "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
-                      (agent.totalAtendimentos - agent.leadsUnicos) > 0
-                        ? "bg-warning/15 text-warning"
-                        : "text-muted-foreground"
+                      (agent.totalAtendimentos - agent.leadsUnicos) > (agent.totalAtendimentos * 0.15) || (agent.totalAtendimentos - agent.leadsUnicos) > 20
+                        ? "bg-destructive/15 text-destructive"
+                        : (agent.totalAtendimentos - agent.leadsUnicos) > 5
+                          ? "bg-warning/15 text-warning"
+                          : "text-muted-foreground"
                     )}>
                       {agent.totalAtendimentos - agent.leadsUnicos}
                     </span>
@@ -205,11 +208,13 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
                   <TableCell className="text-center">
                     <span className={cn(
                       "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
-                      agent.taxaRechamadas > avgTaxaRechamadas * 1.3 
+                      agent.taxaRechamadas > 25 
                         ? "bg-destructive/15 text-destructive" 
-                        : agent.taxaRechamadas < avgTaxaRechamadas * 0.7
-                          ? "bg-success/15 text-success"
-                          : "text-muted-foreground"
+                        : agent.taxaRechamadas > 15
+                          ? "bg-warning/15 text-warning"
+                          : agent.taxaRechamadas < 10
+                            ? "bg-success/15 text-success"
+                            : "text-muted-foreground"
                     )}>
                       {agent.taxaRechamadas}%
                     </span>
@@ -229,27 +234,40 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
                   <TableCell className="text-center">
                     <span className={cn(
                       "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
-                      agent.tme < avgTME * 0.5 
-                        ? "bg-success/15 text-success" 
-                        : agent.tme > avgTME * 2
-                          ? "bg-destructive/15 text-destructive"
-                          : "text-muted-foreground"
+                      agent.tme >= 60 
+                        ? "bg-destructive/15 text-destructive" 
+                        : agent.tme >= 30
+                          ? "bg-warning/15 text-warning"
+                          : agent.tme <= 10
+                            ? "bg-success/15 text-success"
+                            : "text-muted-foreground"
                     )}>
                       {agent.tme}min
                     </span>
                   </TableCell>
-                  <TableCell className="text-center font-mono text-sm">
-                    {agent.tmr}h
+                  <TableCell className="text-center">
+                    <span className={cn(
+                      "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
+                      agent.tmr > avgTMR * 1.8 
+                        ? "bg-destructive/15 text-destructive" 
+                        : agent.tmr > avgTMR * 1.3
+                          ? "bg-warning/15 text-warning"
+                          : agent.tmr < avgTMR * 0.7
+                            ? "bg-success/15 text-success"
+                            : "text-muted-foreground"
+                    )}>
+                      {agent.tmr}h
+                    </span>
                   </TableCell>
                   <TableCell className="text-center">
                     {agent.npsMedio !== null ? (
                       <span className={cn(
                         "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
-                        agent.npsMedio >= 4.5 
+                        agent.npsMedio >= 4.6 
                           ? "bg-success/15 text-success" 
-                          : agent.npsMedio < 3.5
-                            ? "bg-destructive/15 text-destructive"
-                            : "text-muted-foreground"
+                          : agent.npsMedio >= 4.0
+                            ? "bg-warning/15 text-warning"
+                            : "bg-destructive/15 text-destructive"
                       )}>
                         {agent.npsMedio}
                       </span>
@@ -291,15 +309,15 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
       <div className="flex flex-wrap gap-6 mt-6 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span className="w-4 h-4 rounded-md bg-success/20 border border-success/40" />
-          <span>Acima da média</span>
+          <span>Excelente Performance</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-4 h-4 rounded-md bg-warning/20 border border-warning/40" />
-          <span>Atenção</span>
+          <span>Atenção / Alerta</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-4 h-4 rounded-md bg-destructive/20 border border-destructive/40" />
-          <span>Crítico</span>
+          <span>Crítico / Imediato</span>
         </div>
       </div>
     </motion.div>

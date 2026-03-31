@@ -70,24 +70,39 @@ export function AddManualFeedbackModal({
     }
 
     setLoading(true);
-    const success = await onAdd({
-      feedback_date: result.data.feedback_date!,
-      status: result.data.status! as ManualFeedbackStatus,
-      category: (result.data.category ?? null) as ManualFeedbackCategory | null,
-      observations: result.data.observations ?? null,
-    });
+    try {
+      const success = await onAdd({
+        feedback_date: result.data.feedback_date!,
+        status: result.data.status! as ManualFeedbackStatus,
+        category: (result.data.category ?? null) as ManualFeedbackCategory | null,
+        observations: result.data.observations ?? null,
+      });
 
-    if (success) {
+      if (success) {
+        setFeedbackDate(format(new Date(), 'yyyy-MM-dd'));
+        setStatus('pending');
+        setCategory('none');
+        setObservations('');
+        onOpenChange(false);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
       setFeedbackDate(format(new Date(), 'yyyy-MM-dd'));
       setStatus('pending');
       setCategory('none');
       setObservations('');
-      onOpenChange(false);
+      setLoading(false);
     }
+    onOpenChange(newOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Novo Feedback</DialogTitle>

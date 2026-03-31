@@ -54,23 +54,38 @@ export function AddWarningModal({ open, onOpenChange, onSubmit }: AddWarningModa
     }
 
     setSubmitting(true);
-    const success = await onSubmit({
-      warning_date: result.data.warning_date!,
-      type: result.data.type! as WarningType,
-      reason: result.data.reason!,
-      details: result.data.details,
-    });
-    if (success) {
+    try {
+      const success = await onSubmit({
+        warning_date: result.data.warning_date!,
+        type: result.data.type! as WarningType,
+        reason: result.data.reason!,
+        details: result.data.details,
+      });
+      if (success) {
+        setDate(new Date().toISOString().split('T')[0]);
+        setType('verbal');
+        setReason('');
+        setDetails('');
+        onOpenChange(false);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
       setDate(new Date().toISOString().split('T')[0]);
       setType('verbal');
       setReason('');
       setDetails('');
-      onOpenChange(false);
+      setSubmitting(false);
     }
+    onOpenChange(newOpen);
   };
- 
-   return (
-     <Dialog open={open} onOpenChange={onOpenChange}>
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
        <DialogContent className="sm:max-w-md">
          <DialogHeader>
            <DialogTitle>Registrar Advertência</DialogTitle>
