@@ -176,8 +176,6 @@ export function useDataValidation(tickets: SupportTicket[]) {
       
       if (isValidDate(ticket.data_abertura)) {
         fieldTracking.data_abertura.filled++;
-        if (!earliestDate || ticket.data_abertura < earliestDate) earliestDate = ticket.data_abertura;
-        if (!latestDate || ticket.data_abertura > latestDate) latestDate = ticket.data_abertura;
         
         // Check for future dates
         if (ticket.data_abertura > now) {
@@ -190,8 +188,11 @@ export function useDataValidation(tickets: SupportTicket[]) {
         fieldTracking.data_abertura.empty++;
       }
 
+      // Período dos dados baseado na data de FINALIZAÇÃO do atendimento
       if (isValidDate(ticket.data_finalizacao)) {
         fieldTracking.data_finalizacao.filled++;
+        if (!earliestDate || ticket.data_finalizacao < earliestDate) earliestDate = ticket.data_finalizacao;
+        if (!latestDate || ticket.data_finalizacao > latestDate) latestDate = ticket.data_finalizacao;
       } else {
         fieldTracking.data_finalizacao.empty++;
       }

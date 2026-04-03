@@ -1,5 +1,9 @@
 import { SupportTicket, AgentMetrics, Insight } from '@/types/support';
 
+// Duração máxima considerada como atendimento ativo (24 horas em minutos).
+// Tickets em aberto por dias/semanas são excluídos do cálculo de TMA.
+const MAX_DURACAO_ATIVA = 1440;
+
 // Helper to parse duration string "HH:MM" or "HHHH:MM:SS" to minutes
 export function parseDuration(duration: string): number {
   if (!duration) return 0;
@@ -70,8 +74,10 @@ export function calculateAgentMetrics(tickets: SupportTicket[]): AgentMetrics[] 
       : 0;
     
     // TMA - Tempo Médio de Atendimento (minutos)
-    const tma = totalAtendimentos > 0 
-      ? Math.round(agentTickets.reduce((acc, t) => acc + t.duracao, 0) / totalAtendimentos)
+    // Exclui tickets em aberto por tempo excessivo (> 24h) que distorcem a média
+    const ticketsAtivos = agentTickets.filter(t => t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA);
+    const tma = ticketsAtivos.length > 0 
+      ? Math.round(ticketsAtivos.reduce((acc, t) => acc + t.duracao, 0) / ticketsAtivos.length)
       : 0;
     
     // TME - Tempo Médio de Espera (minutos)

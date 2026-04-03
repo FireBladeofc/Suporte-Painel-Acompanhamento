@@ -28,3 +28,14 @@ dist-ssr
 
 # Temporary files
 tmp/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Lock file conflitante (projeto usa npm)
+bun.lockb
+
+# Dados sensíveis e outputs gerados
+Dados/Bruto/
+Dados/Final/

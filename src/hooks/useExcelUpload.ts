@@ -2,22 +2,44 @@ import { useState, useCallback } from 'react';
 import ExcelJS from 'exceljs';
 import { SupportTicket } from '@/types/support';
 
-// Helper to parse duration string - format is HHHH:MM (hours:minutes)
+// Helper to parse duration from Excel - formato HH:MM ou HH:MM:SS
+// Também trata frações de dia do Excel e valores numéricos diretos
 function parseDuration(duration: string | number | undefined): number {
-  if (!duration) return 0;
+  if (!duration && duration !== 0) return 0;
+  
+  // Se for número, verificar se é fração de dia do Excel
+  if (typeof duration === 'number') {
+    // Frações de dia do Excel: valores entre 0 e 2 representam tempo (0-48h)
+    if (duration >= 0 && duration < 2) {
+      return Math.round(duration * 24 * 60); // Converte fração de dia → minutos
+    }
+    // Valores >= 2: já são minutos
+    return Math.round(duration);
+  }
+
   const durationStr = String(duration).trim();
   
+  // Formato HH:MM ou HH:MM:SS (horas:minutos ou horas:minutos:segundos)
   if (durationStr.includes(':')) {
     const parts = durationStr.split(':');
     if (parts.length >= 2) {
       const hours = parseInt(parts[0]) || 0;
       const minutes = parseInt(parts[1]) || 0;
-      return hours * 60 + minutes;
+      const seconds = parts.length >= 3 ? (parseInt(parts[2]) || 0) : 0;
+      return hours * 60 + minutes + (seconds >= 30 ? 1 : 0);
     }
   }
   
+  // Tenta converter string numérica
   const numValue = parseFloat(durationStr);
-  return isNaN(numValue) ? 0 : Math.round(numValue);
+  if (!isNaN(numValue)) {
+    if (numValue >= 0 && numValue < 2) {
+      return Math.round(numValue * 24 * 60);
+    }
+    return Math.round(numValue);
+  }
+  
+  return 0;
 }
 
 // Calculate session duration in SECONDS from two Date objects (time-only, ignoring date component)
@@ -109,6 +131,60 @@ function getCellValue(cell: ExcelJS.Cell | undefined): string {
     return String(cell.value.text ?? '');
   }
   
+  return String(cell.value);
+}
+
+// Get cell value preserving native type for time/duration cells.
+// Usa 3 estratégias em cascata para evitar bugs de fuso horário:
+//   1) cell.text → texto formatado como aparece no Excel (ex: "1:39:36") — mais confiável
+//   2) number → fração de dia bruta do Excel → parseDuration converte para minutos
+//   3) Date → calcula milissegundos desde meia-noite LOCAL (timezone-safe)
+function getCellTimeValue(cell: ExcelJS.Cell | undefined): string | number {
+  if (!cell || cell.value === null || cell.value === undefined) return 0;
+
+  // Estratégia 1: Texto formatado da célula (mais confiável, sem timezone issues)
+  // cell.text retorna exatamente o que o Excel mostra, ex: "1:39:36" ou "01:17"
+  try {
+    const text = cell.text;
+    if (text && typeof text === 'string' && text.includes(':')) {
+      return text; // parseDuration parseará como "HH:MM" ou "HH:MM:SS"
+    }
+  } catch {
+    // cell.text pode não estar disponível em alguns cenários
+  }
+
+  // Estratégia 2: Número bruto (fração de dia do Excel)
+  // Ex: 0.069167 = 1h 39m 36s → parseDuration converte com * 24 * 60
+  if (typeof cell.value === 'number') {
+    return cell.value;
+  }
+
+  // Estratégia 3: Date → calcular minutos desde meia-noite (timezone-safe)
+  // Usa new Date(y, m, d) que cria meia-noite em horário LOCAL, 
+  // eliminando qualquer desvio de fuso horário
+  if (cell.value instanceof Date) {
+    const d = cell.value;
+    const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const elapsedMs = d.getTime() - midnight.getTime();
+    return Math.max(0, Math.round(elapsedMs / 60000)); // retorna minutos direto
+  }
+
+  // Estratégia 4: Fórmula com resultado
+  if (typeof cell.value === 'object' && 'result' in cell.value) {
+    const result = cell.value.result;
+    if (typeof result === 'number') return result;
+    if (result instanceof Date) {
+      const d = result;
+      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const elapsedMs = d.getTime() - midnight.getTime();
+      return Math.max(0, Math.round(elapsedMs / 60000));
+    }
+    // Tenta texto do resultado
+    const resultStr = String(result ?? '');
+    if (resultStr.includes(':')) return resultStr;
+    return resultStr || '0';
+  }
+
   return String(cell.value);
 }
 
@@ -348,8 +424,9 @@ export function useExcelUpload() {
           const departamento = departamentoCol > 0 ? getCellValue(row.getCell(departamentoCol)) : '';
           const dataAbertura = dataAberturaCol > 0 ? getCellDateValue(row.getCell(dataAberturaCol)) : '';
           const dataFinalizacao = dataFinalizacaoCol > 0 ? getCellDateValue(row.getCell(dataFinalizacaoCol)) : '';
-          const duracao = duracaoCol > 0 ? getCellValue(row.getCell(duracaoCol)) : '00:00';
-          const espera = esperaCol > 0 ? getCellValue(row.getCell(esperaCol)) : '00:00';
+          const duracao = duracaoCol > 0 ? getCellTimeValue(row.getCell(duracaoCol)) : 0;
+          const espera = esperaCol > 0 ? getCellTimeValue(row.getCell(esperaCol)) : 0;
+
           const leadNumber = leadNumberCol > 0 ? getCellValue(row.getCell(leadNumberCol)) : '';
           const agente = agenteCol > 0 ? getCellValue(row.getCell(agenteCol)) : '';
           const npsValue = npsCol > 0 ? getCellValue(row.getCell(npsCol)) : null;

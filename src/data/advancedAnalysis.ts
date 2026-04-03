@@ -5,6 +5,10 @@
  */
 
 import { SupportTicket, AgentMetrics } from '@/types/support';
+
+// Duração máxima considerada como atendimento ativo (24 horas em minutos).
+// Tickets em aberto por dias/semanas são excluídos do cálculo de TMA.
+const MAX_DURACAO_ATIVA = 1440;
 import {
   OutliersTMAResult,
   AgenteTMAStats,
@@ -62,7 +66,7 @@ export function formatarMinutosParaTexto(minutos: number | null | undefined): st
 export function analisarOutliersTMA(tickets: SupportTicket[]): OutliersTMAResult {
   const durações = tickets
     .map(t => t.duracao)
-    .filter(d => d > 0)
+    .filter(d => d > 0 && d <= MAX_DURACAO_ATIVA) // Exclui tickets em aberto por tempo excessivo
     .sort((a, b) => a - b);
 
   if (durações.length === 0) {
@@ -486,7 +490,7 @@ export function executarAnaliseAvancada(
   // Métricas gerais
   const leadsSet = new Set(tickets.map(t => t.lead_number));
   const contatosUnicos = leadsSet.size;
-  const ticketsComDuracao = tickets.filter(t => t.duracao > 0);
+  const ticketsComDuracao = tickets.filter(t => t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA);
   const tempoMedioAtendimento = ticketsComDuracao.length > 0
     ? round(ticketsComDuracao.reduce((a, t) => a + t.duracao, 0) / ticketsComDuracao.length, 2)
     : null;

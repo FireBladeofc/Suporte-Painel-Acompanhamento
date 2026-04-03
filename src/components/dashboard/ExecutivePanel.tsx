@@ -31,9 +31,10 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
   const { tmaNormal, tmaOutliers } = analise.metricasGerais;
   const totalRegistros = tickets.length;
 
-  // TME - Tempo Médio de Espera (minutos) — coluna "espera", sobre tickets brutos (alinhado com Python)
-  const tme = tickets.length > 0
-    ? Math.round(tickets.reduce((acc, t) => acc + t.espera, 0) / tickets.length)
+  // TME - Tempo Médio de Espera (minutos) — exclui tickets em aberto > 24h
+  const ticketsComEsperaValida = tickets.filter(t => t.espera > 0 && t.espera <= 1440);
+  const tme = ticketsComEsperaValida.length > 0
+    ? Math.round(ticketsComEsperaValida.reduce((acc, t) => acc + t.espera, 0) / ticketsComEsperaValida.length)
     : 0;
 
   // NPS Médio — sobre tickets brutos (alinhado com Python)
@@ -77,6 +78,7 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
     const remainingSeconds = Math.round(seconds % 60);
     return `${String(totalMinutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
   };
+
 
   return (
     <motion.div
@@ -123,6 +125,7 @@ export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
           variant="warning"
           delay={2}
         />
+
 
         <KPICard
           title="TME"

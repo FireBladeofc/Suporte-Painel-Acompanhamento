@@ -140,12 +140,12 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
     };
   }, [agentMetrics]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; payload?: Record<string, string> }>; label?: string }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-card/95 backdrop-blur-lg border border-border/50 rounded-xl shadow-2xl p-4">
           <p className="text-sm font-semibold text-foreground mb-1">{payload[0]?.payload?.fullName || label}</p>
-          {payload.map((p: any, i: number) => (
+          {payload.map((p, i: number) => (
             <p key={i} className="text-xs text-muted-foreground">
               {p.name}: <span className="text-primary font-mono font-semibold">{p.value}</span>
             </p>
@@ -156,7 +156,7 @@ export function OperationalPanel({ tickets, agentMetrics }: OperationalPanelProp
     return null;
   };
 
-  const AgentChartTooltip = ({ active, payload }: any) => {
+  const AgentChartTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, number | string> }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0]?.payload;
       const unicos = data?.contatosUnicos || 0;

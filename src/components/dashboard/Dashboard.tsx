@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardFilters, SupportTicket } from '@/types/support';
 import { calculateAgentMetrics } from '@/data/supportData';
@@ -12,6 +12,7 @@ import { DataValidationPanel } from './DataValidationPanel';
 import { AdvancedAnalysisPanel } from './AdvancedAnalysisPanel';
 import { FeedbackPanel } from '@/components/feedback/FeedbackPanel';
 import { useDataValidation } from '@/hooks/useDataValidation';
+import { useTicketStorage } from '@/hooks/useTicketStorage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   LayoutDashboard, 
@@ -27,7 +28,13 @@ import {
 import { startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 
 export function Dashboard() {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const {
+    tickets,
+    lastFilename,
+    lastImportedAt,
+    isLoadingStorage,
+    persistTickets,
+  } = useTicketStorage();
   
   const [filters, setFilters] = useState<DashboardFilters>({
     agente: null,
@@ -40,8 +47,8 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('executive');
 
   // Handle Excel data import
-  const handleDataLoaded = useCallback((newTickets: SupportTicket[]) => {
-    setTickets(newTickets);
+  const handleDataLoaded = useCallback((newTickets: SupportTicket[], filename: string) => {
+    persistTickets(newTickets, filename);
     // Reset filters when new data is loaded
     setFilters({
       agente: null,
@@ -50,7 +57,7 @@ export function Dashboard() {
       finalizacao: null,
       avaliado: 'todos'
     });
-  }, []);
+  }, [persistTickets]);
 
   // Apply filters to tickets
   const filteredTickets = useMemo(() => {
@@ -60,7 +67,7 @@ export function Dashboard() {
       
       // Filter by periodo
       if (filters.periodo) {
-        const ticketDate = startOfDay(ticket.data_abertura);
+        const ticketDate = startOfDay(ticket.data_finalizacao);
         const filterStart = startOfDay(filters.periodo.start);
         const filterEnd = startOfDay(filters.periodo.end);
         
@@ -96,6 +103,15 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background noise-overlay">
+      {/* Loading state while IndexedDB is being read */}
+      {isLoadingStorage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Carregando dados salvos...</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/30">
         <div className="absolute inset-0 bg-background/70 backdrop-blur-xl" />
@@ -289,6 +305,10 @@ export function Dashboard() {
         <div className="container mx-auto px-4 text-center">
           <p className="text-xs text-muted-foreground">
             Dashboard de Suporte Técnico • Dados carregados via Excel
+            {lastFilename && lastImportedAt && (
+              <> &mdash; <span className="text-primary/70">{lastFilename}</span> importado em{' '}
+              {lastImportedAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+            )}
           </p>
         </div>
       </footer>
