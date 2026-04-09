@@ -535,12 +535,39 @@ export function executarAnaliseAvancada(
     t.finalizacao.toLowerCase().includes('sup - n2')
   ).length;
 
-  // O cálculo de outliers (IQR) deve ser baseado no universo total de dados (Baseline Global)
+  // O cálculo do limite de outliers (IQR) deve ser baseado no universo total de dados (Baseline Global)
   // para que o padrão de "Atendimento Normal" seja o da empresa, não apenas do filtro atual.
-  const outliersTMA = analisarOutliersTMA(allTickets || tickets);
+  const baselineOutliers = analisarOutliersTMA(allTickets || tickets);
+  const limiteSuperiorGlobal = baselineOutliers.limiteSuperiorMinutos;
   
-  // TMA Segregado
-  const ticketsNormais = ticketsComDuracao.filter(t => t.duracao <= outliersTMA.limiteSuperiorMinutos);
+  // Agora calculamos os outliers REAIS para a seleção atual (filtros ativos)
+  // usando o threshold global para manter a consistência.
+  const outliersAtuais = ticketsComDuracao.filter(t => t.duracao > limiteSuperiorGlobal);
+  const totalOutliersAtuais = outliersAtuais.length;
+  const tmaOutliersAtuais = totalOutliersAtuais > 0
+    ? round(outliersAtuais.reduce((a, t) => a + t.duracao, 0) / totalOutliersAtuais, 2)
+    : 0;
+
+  // Atualizamos o objeto de outliers para refletir a seleção atual, 
+  // mas preservamos as estatísticas por agente se estivermos na visão global.
+  const outliersTMA = {
+    ...baselineOutliers,
+    totalOutliers: totalOutliersAtuais,
+    duracaoMediaOutliers: tmaOutliersAtuais,
+    // Filtramos o Top 5 para mostrar apenas outliers da seleção atual
+    top5MaisLongos: outliersAtuais
+      .sort((a, b) => b.duracao - a.duracao)
+      .slice(0, 5)
+      .map(t => ({
+        agente: t.agente,
+        duracaoMinutos: round(t.duracao),
+        finalizacao: t.finalizacao,
+        leadNumber: t.lead_number,
+      }))
+  };
+  
+  // TMA Segregado (tickets abaixo ou igual ao threshold global)
+  const ticketsNormais = ticketsComDuracao.filter(t => t.duracao <= limiteSuperiorGlobal);
   const tmaNormal = ticketsNormais.length > 0
     ? round(ticketsNormais.reduce((a, t) => a + t.duracao, 0) / ticketsNormais.length, 2)
     : null;
@@ -560,7 +587,7 @@ export function executarAnaliseAvancada(
     avaliacoesPendentes,
     totalFinalizacoesN2: n2Count,
     tmaNormal,
-    tmaOutliers: outliersTMA.duracaoMediaOutliers > 0 ? outliersTMA.duracaoMediaOutliers : null,
+    tmaOutliers: tmaOutliersAtuais > 0 ? tmaOutliersAtuais : null,
     maxDuracaoAtiva,
   };
 
