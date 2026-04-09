@@ -22,10 +22,15 @@ function parseDuration(duration: string | number | undefined): number {
   // Formato HH:MM ou HH:MM:SS (horas:minutos ou horas:minutos:segundos)
   if (durationStr.includes(':')) {
     const parts = durationStr.split(':');
-    if (parts.length >= 2) {
-      const hours = parseInt(parts[0]) || 0;
-      const minutes = parseInt(parts[1]) || 0;
-      const seconds = parts.length >= 3 ? (parseInt(parts[2]) || 0) : 0;
+    const hours = parseInt(parts[0]) || 0;
+    const minutes = parseInt(parts[1]) || 0;
+    
+    if (parts.length === 2) {
+      // Formato HH:MM - horas e minutos apenas
+      return hours * 60 + minutes;
+    } else if (parts.length >= 3) {
+      // Formato HH:MM:SS - inclui arredondamento de segundos
+      const seconds = parseInt(parts[2]) || 0;
       return hours * 60 + minutes + (seconds >= 30 ? 1 : 0);
     }
   }

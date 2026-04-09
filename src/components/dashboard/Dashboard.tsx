@@ -272,7 +272,11 @@ export function Dashboard() {
                 )}
 
                 <TabsContent value="executive" className="mt-8">
-                  <ExecutivePanel tickets={filteredTickets} agentMetrics={agentMetrics} />
+                  <ExecutivePanel 
+                    tickets={filteredTickets} 
+                    agentMetrics={agentMetrics} 
+                    allTickets={tickets}
+                  />
                 </TabsContent>
 
                 <TabsContent value="operational" className="mt-8">
@@ -288,7 +292,11 @@ export function Dashboard() {
                 </TabsContent>
 
                 <TabsContent value="advanced" className="mt-8">
-                  <AdvancedAnalysisPanel tickets={filteredTickets} agentMetrics={agentMetrics} />
+                  <AdvancedAnalysisPanel 
+                    tickets={filteredTickets} 
+                    agentMetrics={agentMetrics} 
+                    allTickets={tickets}
+                  />
                 </TabsContent>
 
                 <TabsContent value="feedback" className="mt-0">

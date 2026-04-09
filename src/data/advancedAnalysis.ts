@@ -6,9 +6,11 @@
 
 import { SupportTicket, AgentMetrics } from '@/types/support';
 
-// Duração máxima considerada como atendimento ativo (24 horas em minutos).
-// Tickets em aberto por dias/semanas são excluídos do cálculo de TMA.
-const MAX_DURACAO_ATIVA = 1440;
+// Duração máxima considerada para análise (30 dias em minutos).
+// Permite capturar outliers reais de longa duração conforme print do usuário.
+const MAX_DURACAO_ATIVA = 43200; 
+// Espera máxima considerada válida (24 horas em minutos).
+const MAX_ESPERA_VALIDA = 1440;
 import {
   OutliersTMAResult,
   AgenteTMAStats,
@@ -75,6 +77,7 @@ export function analisarOutliersTMA(tickets: SupportTicket[]): OutliersTMAResult
       totalOutliers: 0,
       duracaoMediaOutliers: 0,
       estatisticasPorAgente: [],
+      topAgentes: [],
       top5MaisLongos: [],
     };
   }
@@ -84,12 +87,14 @@ export function analisarOutliersTMA(tickets: SupportTicket[]): OutliersTMAResult
   const iqr = q3 - q1;
   const limiteSuperior = round(q3 + 1.5 * iqr, 2);
 
-  const outlierTickets = tickets.filter(t => t.duracao > limiteSuperior);
+  const outlierTickets = tickets.filter(
+    (t) => t.duracao > limiteSuperior && t.duracao <= MAX_DURACAO_ATIVA
+  );
 
   // Estatísticas por agente
   const agenteMap = new Map<string, number[]>();
-  tickets.forEach(t => {
-    if (t.duracao > 0) {
+  tickets.forEach((t) => {
+    if (t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA) {
       const arr = agenteMap.get(t.agente) || [];
       arr.push(t.duracao);
       agenteMap.set(t.agente, arr);
@@ -124,11 +129,17 @@ export function analisarOutliersTMA(tickets: SupportTicket[]): OutliersTMAResult
     ? round(outlierTickets.reduce((acc, t) => acc + t.duracao, 0) / outlierTickets.length)
     : 0;
 
+  const topAgentes = [...estatisticasPorAgente]
+    .filter(a => a.totalAtendimentos >= 10)
+    .sort((a, b) => a.tmaMinutos - b.tmaMinutos)
+    .slice(0, 3);
+
   return {
     limiteSuperiorMinutos: limiteSuperior,
     totalOutliers: outlierTickets.length,
     duracaoMediaOutliers: mediaOutliers,
     estatisticasPorAgente,
+    topAgentes,
     top5MaisLongos,
   };
 }
@@ -171,7 +182,9 @@ export function analisarCasosLongos(
   limiteHoras: number = 5
 ): CasosLongosResult {
   const limiteMin = limiteHoras * 60;
-  const ticketsComDuracao = tickets.filter(t => t.duracao > 0);
+  const ticketsComDuracao = tickets.filter(
+    (t) => t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA
+  );
 
   if (ticketsComDuracao.length === 0) {
     return {
@@ -349,9 +362,9 @@ export function gerarPlanoAcaoSemanal(
     ? round(((tickets.length - contatosUnicos) / contatosUnicos) * 100, 2)
     : 0;
 
-  const ticketsComEspera = tickets.filter(t => t.espera > 0);
-  const tme = ticketsComEspera.length > 0
-    ? round(ticketsComEspera.reduce((a, t) => a + t.espera, 0) / ticketsComEspera.length, 2)
+  const ticketsComEsperaValida = tickets.filter(t => t.espera >= 0 && t.espera <= MAX_ESPERA_VALIDA);
+  const tme = ticketsComEsperaValida.length > 0
+    ? round(ticketsComEsperaValida.reduce((a, t) => a + t.espera, 0) / ticketsComEsperaValida.length, 2)
     : null;
 
   const npsValues = tickets.map(t => t.nps).filter((n): n is number => n !== null);
@@ -444,6 +457,7 @@ export function analisarLeadsComRisco(
   const leadMap = new Map<string, SupportTicket[]>();
   
   tickets.forEach(t => {
+    if (t.duracao <= 0 || t.duracao > MAX_DURACAO_ATIVA) return;
     const leadNum = t.lead_number;
     if (!leadNum) return;
     const arr = leadMap.get(leadNum) || [];
@@ -485,9 +499,10 @@ export function analisarLeadsComRisco(
 
 export function executarAnaliseAvancada(
   tickets: SupportTicket[],
-  agentMetrics: AgentMetrics[]
+  agentMetrics: AgentMetrics[],
+  allTickets?: SupportTicket[]
 ): AnaliseAvancadaResult {
-  // Métricas gerais
+  // Métricas gerais baseadas nos tickets filtrados
   const leadsSet = new Set(tickets.map(t => t.lead_number));
   const contatosUnicos = leadsSet.size;
   const ticketsComDuracao = tickets.filter(t => t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA);
@@ -495,10 +510,10 @@ export function executarAnaliseAvancada(
     ? round(ticketsComDuracao.reduce((a, t) => a + t.duracao, 0) / ticketsComDuracao.length, 2)
     : null;
 
-  const ticketsComEspera = tickets.filter(t => t.espera > 0);
-  const tempoMedioEspera = ticketsComEspera.length > 0
-    ? round(ticketsComEspera.reduce((a, t) => a + t.espera, 0) / ticketsComEspera.length, 2)
-    : null;
+  const ticketsComEsperaValida = tickets.filter(t => t.espera >= 0 && t.espera <= MAX_ESPERA_VALIDA);
+  const tempoMedioEspera = ticketsComEsperaValida.length > 0
+    ? round(ticketsComEsperaValida.reduce((a, t) => a + t.espera, 0) / ticketsComEsperaValida.length, 2)
+    : 0;
 
   const npsValues = tickets.map(t => t.nps).filter((n): n is number => n !== null);
   const npsMedio = npsValues.length > 0
@@ -520,12 +535,18 @@ export function executarAnaliseAvancada(
     t.finalizacao.toLowerCase().includes('sup - n2')
   ).length;
 
-  const outliersTMA = analisarOutliersTMA(tickets);
+  // O cálculo de outliers (IQR) deve ser baseado no universo total de dados (Baseline Global)
+  // para que o padrão de "Atendimento Normal" seja o da empresa, não apenas do filtro atual.
+  const outliersTMA = analisarOutliersTMA(allTickets || tickets);
   
   // TMA Segregado
   const ticketsNormais = ticketsComDuracao.filter(t => t.duracao <= outliersTMA.limiteSuperiorMinutos);
   const tmaNormal = ticketsNormais.length > 0
     ? round(ticketsNormais.reduce((a, t) => a + t.duracao, 0) / ticketsNormais.length, 2)
+    : null;
+
+  const maxDuracaoAtiva = ticketsComDuracao.length > 0
+    ? Math.max(...ticketsComDuracao.map(t => t.duracao))
     : null;
 
   const metricasGerais = {
@@ -540,6 +561,7 @@ export function executarAnaliseAvancada(
     totalFinalizacoesN2: n2Count,
     tmaNormal,
     tmaOutliers: outliersTMA.duracaoMediaOutliers > 0 ? outliersTMA.duracaoMediaOutliers : null,
+    maxDuracaoAtiva,
   };
 
   return {

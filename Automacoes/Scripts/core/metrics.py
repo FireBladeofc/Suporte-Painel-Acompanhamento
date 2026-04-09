@@ -29,14 +29,16 @@ def calcular_metricas_gerais(df, colunas):
     col_cliente = colunas['cliente']
     col_finalizacao = colunas['finalizacao']
 
-    # Tempos de atendimento convertidos para minutos
-    tempos_validos = df[col_tempo].apply(converter_tempo_para_minutos).dropna()
+    # Tempos de atendimento convertidos para minutos (limite de sanidade de 24h)
+    tempos_validos_raw = df[col_tempo].apply(converter_tempo_para_minutos).dropna()
+    tempos_validos = tempos_validos_raw[tempos_validos_raw <= 1440] # 24h em minutos
 
-    # Tempo médio de espera
+    # Tempo médio de espera (limitado a 12h e incluindo zeros)
     tempo_espera_medio = None
     if col_espera:
         tempos_espera = df[col_espera].apply(converter_tempo_para_minutos).dropna()
-        tempo_espera_medio = round(tempos_espera.mean(), 2) if len(tempos_espera) > 0 else None
+        tempos_espera_validos = tempos_espera[tempos_espera <= 720]
+        tempo_espera_medio = round(tempos_espera_validos.mean(), 2) if len(tempos_espera_validos) > 0 else None
 
     # NPS médio e taxa de avaliação
     nps_medio = None
@@ -109,7 +111,8 @@ def calcular_metricas_por_colaborador(df, col_colaborador, col_tempo, col_client
     for colaborador in df[col_colaborador].unique():
         df_colab = df[df[col_colaborador] == colaborador]
 
-        tempos = df_colab[col_tempo].apply(converter_tempo_para_minutos).dropna()
+        tempos_raw = df_colab[col_tempo].apply(converter_tempo_para_minutos).dropna()
+        tempos = tempos_raw[tempos_raw <= 1440] # Sanity cap 24h
         clientes_unicos = df_colab[col_cliente].nunique()
         duplicados = len(df_colab) - clientes_unicos
 

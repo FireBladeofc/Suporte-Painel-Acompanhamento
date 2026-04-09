@@ -23,12 +23,15 @@ import {
   GitCompareArrows,
   Timer,
   ShieldAlert,
+  Trophy,
+  Medal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AdvancedAnalysisPanelProps {
   tickets: SupportTicket[];
   agentMetrics: AgentMetrics[];
+  allTickets?: SupportTicket[];
 }
 
 const containerVariants = {
@@ -121,10 +124,14 @@ function SectionCard({
   );
 }
 
-export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysisPanelProps) {
+export function AdvancedAnalysisPanel({
+  tickets,
+  agentMetrics,
+  allTickets,
+}: AdvancedAnalysisPanelProps) {
   const analise = useMemo(
-    () => executarAnaliseAvancada(tickets, agentMetrics),
-    [tickets, agentMetrics]
+    () => executarAnaliseAvancada(tickets, agentMetrics, allTickets),
+    [tickets, agentMetrics, allTickets]
   );
 
   const { outliersTMA, correlacaoNPSProblema, casosLongos, motivosFinalizacao, detratores, planoAcao } =
@@ -304,7 +311,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
 
       {/* 3. Outliers TMA */}
       <SectionCard
-        title="Outliers de Duração (TMA)"
+        title="Outliers de TMA"
         icon={Timer}
         badge={
           outliersTMA.totalOutliers > 0
@@ -323,23 +330,84 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
                 Limite IQR
               </p>
-            </div>
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/30 text-center">
-              <p className="text-2xl font-bold font-display text-foreground">
-                {outliersTMA.totalOutliers}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
-                Outliers detectados
+              <p className="text-[9px] text-muted-foreground mt-0.5 italic">
+                (Limite Estatístico)
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/30 text-center">
-              <p className="text-2xl font-bold font-display text-foreground">
-                {formatarMinutosParaTexto(outliersTMA.duracaoMediaOutliers)}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
-                Duração média outliers
-              </p>
-            </div>
+            {outliersTMA.totalOutliers > 0 ? (
+              <>
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/30 text-center">
+                  <p className="text-2xl font-bold font-display text-foreground">
+                    {outliersTMA.totalOutliers}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+                    Outliers detectados
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/30 text-center">
+                  <p className="text-2xl font-bold font-display text-foreground">
+                    {formatarMinutosParaTexto(outliersTMA.duracaoMediaOutliers)}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+                    Média de TMA
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center flex flex-col justify-center min-h-[90px]">
+                  <div className="flex justify-center items-end gap-3 mb-2">
+                    {/* Logica de podio 2-1-3 */}
+                    {[1, 0, 2].map((idx) => {
+                      const ag = outliersTMA.topAgentes[idx];
+                      if (!ag) return null;
+                      const isFirst = idx === 0;
+                      return (
+                        <div key={idx} className={cn(
+                          "flex flex-col items-center transition-all duration-300",
+                          isFirst ? "scale-110 -translate-y-1" : "opacity-80 scale-90"
+                        )}>
+                          <div className={cn(
+                            "rounded-full flex items-center justify-center mb-1.5 shadow-sm",
+                            isFirst ? "w-8 h-8 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30" :
+                            idx === 1 ? "w-7 h-7 bg-slate-300/20 text-slate-300 border border-slate-300/30" :
+                            "w-7 h-7 bg-amber-600/20 text-amber-600 border border-amber-600/30"
+                          )}>
+                            <Trophy className={isFirst ? "w-4 h-4" : "w-3.5 h-3.5"} />
+                          </div>
+                          <span 
+                            title={ag.agente.split(' - ').pop()}
+                            className={cn(
+                              "text-center leading-tight truncate px-1 font-semibold",
+                              isFirst ? "text-xs text-foreground w-24" : "text-[10px] text-muted-foreground w-20"
+                            )}
+                          >
+                            {ag.agente.split(' - ').pop()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] uppercase tracking-wider text-primary/80 font-bold mt-1">
+                    🏆 Pódio de Agilidade
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-success/5 border border-success/20 text-center">
+                  <p className="text-2xl font-bold font-display text-success">
+                    {outliersTMA.topAgentes.length > 0 
+                      ? formatarMinutosParaTexto(outliersTMA.topAgentes[0].tmaMinutos)
+                      : "N/A"
+                    }
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+                    Melhor Performance
+                  </p>
+                  <p className="text-[9px] text-success/70 mt-0.5 italic">
+                    (Média do 1º Colocado)
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Estatísticas por agente */}
@@ -347,7 +415,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
-                Estatísticas TMA por Agente
+                Estatísticas de Duração por Agente
               </h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -360,7 +428,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
                         Atend.
                       </th>
                       <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        TMA
+                        Duração Média
                       </th>
                       <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Máx.
@@ -715,7 +783,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
 
       {/* 7. Leads com Risco (TMA + Rechamadas) */}
       <SectionCard
-        title="Leads com Risco (TMA + Rechamadas)"
+        title="Leads com Risco (Duração + Rechamadas)"
         icon={ShieldAlert}
         badge={analise.leadsComRisco.total > 0 ? `${analise.leadsComRisco.total} leads` : 'Nenhum'}
         badgeVariant={analise.leadsComRisco.total > 0 ? 'critical' : 'success'}
@@ -742,7 +810,7 @@ export function AdvancedAnalysisPanel({ tickets, agentMetrics }: AdvancedAnalysi
                       Último Agente
                     </th>
                     <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      TMA Médio
+                      Duração Média
                     </th>
                     <th className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Rechamadas

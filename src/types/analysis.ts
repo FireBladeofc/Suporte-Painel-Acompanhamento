@@ -21,6 +21,7 @@ export interface OutliersTMAResult {
   totalOutliers: number;
   duracaoMediaOutliers: number;
   estatisticasPorAgente: AgenteTMAStats[];
+  topAgentes: AgenteTMAStats[];
   top5MaisLongos: OutlierItem[];
 }
 
@@ -108,6 +109,7 @@ export interface AnaliseAvancadaResult {
     totalFinalizacoesN2: number;
     tmaNormal: number | null;
     tmaOutliers: number | null;
+    maxDuracaoAtiva: number | null;
   };
   outliersTMA: OutliersTMAResult;
   correlacaoNPSProblema: CorrelacaoNPSItem[];

@@ -19,23 +19,19 @@ import {
 interface ExecutivePanelProps {
   tickets: SupportTicket[];
   agentMetrics: AgentMetrics[];
+  allTickets?: SupportTicket[];
 }
 
-export function ExecutivePanel({ tickets, agentMetrics }: ExecutivePanelProps) {
+export function ExecutivePanel({ tickets, agentMetrics, allTickets }: ExecutivePanelProps) {
   const uniqueMetrics = useUniqueContacts(tickets);
   const analise = useMemo(
-    () => executarAnaliseAvancada(tickets, agentMetrics),
-    [tickets, agentMetrics]
+    () => executarAnaliseAvancada(tickets, agentMetrics, allTickets),
+    [tickets, agentMetrics, allTickets]
   );
 
-  const { tmaNormal, tmaOutliers } = analise.metricasGerais;
+  const { tmaNormal, tmaOutliers, tempoMedioEspera } = analise.metricasGerais;
+  const tme = tempoMedioEspera || 0;
   const totalRegistros = tickets.length;
-
-  // TME - Tempo Médio de Espera (minutos) — exclui tickets em aberto > 24h
-  const ticketsComEsperaValida = tickets.filter(t => t.espera > 0 && t.espera <= 1440);
-  const tme = ticketsComEsperaValida.length > 0
-    ? Math.round(ticketsComEsperaValida.reduce((acc, t) => acc + t.espera, 0) / ticketsComEsperaValida.length)
-    : 0;
 
   // NPS Médio — sobre tickets brutos (alinhado com Python)
   const npsValues = tickets.map(t => t.nps).filter((n): n is number => n !== null);
