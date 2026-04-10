@@ -56,15 +56,15 @@ def detectar_colunas(df):
         col_lower = col.lower()
 
         # Detecção do colaborador/agente
-        if 'agente' in col_lower or 'colaborador' in col_lower or 'atendente' in col_lower:
+        if 'agente' in col_lower or 'colab' in col_lower or 'atend' in col_lower:
             colunas['colaborador'] = col
 
         # Detecção do cliente/lead
-        elif 'lead' in col_lower or 'cliente' in col_lower or 'client' in col_lower:
+        elif 'lead' in col_lower or 'client' in col_lower or 'usuari' in col_lower:
             colunas['cliente'] = col
 
         # Detecção do tempo de atendimento (exclui espera)
-        elif 'duracao' in col_lower or ('tempo' in col_lower and 'espera' not in col_lower):
+        elif 'dura' in col_lower or ('tempo' in col_lower and 'espera' not in col_lower):
             colunas['tempo'] = col
 
         # Detecção do tempo de espera
@@ -72,7 +72,7 @@ def detectar_colunas(df):
             colunas['espera'] = col
 
         # Detecção de NPS/avaliação
-        elif 'nps' in col_lower or 'avaliacao' in col_lower or 'nota' in col_lower:
+        elif 'nps' in col_lower or 'avaliac' in col_lower or 'nota' in col_lower:
             colunas['nps'] = col
 
         # Detecção de data
@@ -80,7 +80,7 @@ def detectar_colunas(df):
             colunas['data'] = col
 
         # Detecção de motivo de finalização
-        elif 'finalizacao' in col_lower or 'motivo' in col_lower:
+        elif 'finaliza' in col_lower or 'motiv' in col_lower:
             colunas['finalizacao'] = col
 
     return colunas

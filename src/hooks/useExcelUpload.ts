@@ -256,6 +256,50 @@ export function useExcelUpload() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
 
+  // Nova função para processar via API Python (Vercel Ready)
+  const processWithPython = async (file: File): Promise<UploadResult | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Tenta conexão com a API local ou produção
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:8000/api/analyze' 
+        : '/api/analyze';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha na resposta do motor Python');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.errors?.join(', ') || 'Erro desconhecido no Python');
+      }
+
+      // Converte o formato do Python para o que o Dashboard espera
+      // Nota: O Python retorna métricas agregadas. Aqui adaptamos se necessário.
+      // Para manter a retrocompatibilidade total, retornamos os tickets formatados
+      // ou apenas injetamos os insights calculados pelo Python.
+      
+      return {
+        success: true,
+        tickets: [], // O Dashboard pode buscar do Supabase ou o Python devolver a lista
+        rowCount: data.metricas_gerais.total_registros,
+        errors: [],
+        pythonData: data // Campo extra para insights estratégicos
+      };
+    } catch (err) {
+      console.warn('Motor Python offline ou erro na conexão. Usando processamento local TS.', err);
+      return null;
+    }
+  };
+
   // Process CSV file with batch processing
   const processCSVFile = useCallback(async (file: File): Promise<UploadResult> => {
     const text = await file.text();
@@ -366,6 +410,14 @@ export function useExcelUpload() {
     setProgress(null);
 
     try {
+      // 1. Tentar processar via Motor Python primeiro (Garantia de Margem de Erro)
+      const pythonResult = await processWithPython(file);
+      if (pythonResult) {
+        setIsLoading(false);
+        return pythonResult;
+      }
+
+      // 2. Se o Python falhar/estiver offline, fallback para o processamento original
       // Check if it's a CSV file
       const isCSV = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
       
