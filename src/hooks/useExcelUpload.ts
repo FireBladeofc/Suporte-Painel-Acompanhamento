@@ -289,10 +289,16 @@ export function useExcelUpload() {
       
       return {
         success: true,
-        tickets: [], // O Dashboard pode buscar do Supabase ou o Python devolver a lista
+        tickets: data.tickets.map((t: any) => ({
+          ...t,
+          data_abertura: new Date(t.data_abertura),
+          data_finalizacao: t.data_finalizacao ? new Date(t.data_finalizacao) : new Date(),
+          // Garante que duracao_sessao exista para compatibilidade
+          duracao_sessao: (t.duracao || 0) * 60 
+        })),
         rowCount: data.metricas_gerais.total_registros,
         errors: [],
-        pythonData: data // Campo extra para insights estratégicos
+        pythonData: data 
       };
     } catch (err) {
       console.warn('Motor Python offline ou erro na conexão. Usando processamento local TS.', err);

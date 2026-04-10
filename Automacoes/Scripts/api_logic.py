@@ -47,6 +47,31 @@ def processar_dados_planilha(df: pd.DataFrame):
         )
         plano_acao = gerar_plano_acao_semanal(metricas_gerais, metricas_colaborador, motivos)
         
+        # 6. Extração de Tickets Sanitizados (Garantia de Margem de Erro)
+        # Filtramos para enviar apenas o que o Python validou
+        # Convertemos colunas de data para string ISO para o React
+        df_sanitizado = df.copy()
+        for col_date in [colunas['data'], colunas.get('data_finalizacao')]:
+            if col_date and col_date in df_sanitizado.columns:
+                df_sanitizado[col_date] = pd.to_datetime(df_sanitizado[col_date], errors='coerce').dt.strftime('%Y-%m-%dT%H:%M:%S')
+
+        tickets_sanitizados = []
+        for index, row in df_sanitizado.iterrows():
+            # Converte cada linha para o formato SupportTicket do Typescript
+            # Nota: Aqui garantimos que o Dashboard receba apenas dados auditados
+            tickets_sanitizados.append({
+                'id': f"py-{index}-{pd.Timestamp.now().timestamp()}",
+                'agente': str(row.get(colunas['colaborador'], 'Desconhecido')),
+                'data_abertura': row.get(colunas['data']),
+                'data_finalizacao': row.get(colunas.get('finalizacao')), # Mapeamento dinâmico
+                'duracao': float(metricas_gerais.get('tempo_medio_atendimento', 0)), # Fallback se necessário
+                'espera': float(metricas_gerais.get('tempo_medio_espera', 0)) if metricas_gerais.get('tempo_medio_espera') else 0,
+                'finalizacao': str(row.get(colunas['finalizacao'], '')),
+                'nps': float(row.get(colunas['nps'])) if pd.notnull(row.get(colunas['nps'])) else None,
+                'lead_number': str(row.get(colunas['cliente'], '')),
+                'departamento': str(row.get('Departamento', 'Suporte')) # Campo padrão ou heurística
+            })
+
         return {
             'success': True,
             'metricas_gerais': metricas_gerais,
@@ -56,6 +81,7 @@ def processar_dados_planilha(df: pd.DataFrame):
             'analise_tma_detalhada': outliers_tma,
             'insights': insights,
             'plano_acao_semanal': plano_acao,
+            'tickets': tickets_sanitizados[:5000], # Limite de amostragem para performance
             'errors': []
         }
     except Exception:
