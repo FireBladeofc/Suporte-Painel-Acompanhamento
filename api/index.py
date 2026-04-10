@@ -21,6 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def read_root():
+    return {"mensagem": "API Painel Suporte rodando com sucesso na Vercel!"}
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "Motor Python está ativo!"}
