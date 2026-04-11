@@ -6,7 +6,7 @@ import { SupportTicket } from '@/types/support';
 // Também trata frações de dia do Excel e valores numéricos diretos
 function parseDuration(duration: string | number | undefined): number {
   if (!duration && duration !== 0) return 0;
-  
+
   // Se for número, verificar se é fração de dia do Excel
   if (typeof duration === 'number') {
     // Frações de dia do Excel: valores entre 0 e 2 representam tempo (0-48h)
@@ -18,13 +18,13 @@ function parseDuration(duration: string | number | undefined): number {
   }
 
   const durationStr = String(duration).trim();
-  
+
   // Formato HH:MM ou HH:MM:SS (horas:minutos ou horas:minutos:segundos)
   if (durationStr.includes(':')) {
     const parts = durationStr.split(':');
     const hours = parseInt(parts[0]) || 0;
     const minutes = parseInt(parts[1]) || 0;
-    
+
     if (parts.length === 2) {
       // Formato HH:MM - horas e minutos apenas
       return hours * 60 + minutes;
@@ -34,7 +34,7 @@ function parseDuration(duration: string | number | undefined): number {
       return hours * 60 + minutes + (seconds >= 30 ? 1 : 0);
     }
   }
-  
+
   // Tenta converter string numérica
   const numValue = parseFloat(durationStr);
   if (!isNaN(numValue)) {
@@ -43,7 +43,7 @@ function parseDuration(duration: string | number | undefined): number {
     }
     return Math.round(numValue);
   }
-  
+
   return 0;
 }
 
@@ -53,36 +53,36 @@ function calculateSessionDuration(startDate: Date, endDate: Date): number {
   // Extract only the time components
   const startSeconds = startDate.getHours() * 3600 + startDate.getMinutes() * 60 + startDate.getSeconds();
   const endSeconds = endDate.getHours() * 3600 + endDate.getMinutes() * 60 + endDate.getSeconds();
-  
+
   // Calculate difference (handle overnight sessions by adding 24h if end < start)
   let diffSeconds = endSeconds - startSeconds;
   if (diffSeconds < 0) {
     diffSeconds += 24 * 3600; // Add 24 hours in seconds
   }
-  
+
   // If duration exceeds 24 hours (86400 seconds), treat as outlier and return 0
   if (diffSeconds > 86400) {
     return 0;
   }
-  
+
   return diffSeconds;
 }
 
 // Helper to parse date from various formats
 function parseDate(dateValue: string | number | Date | undefined): Date {
   if (!dateValue) return new Date();
-  
+
   if (dateValue instanceof Date) {
     return dateValue;
   }
-  
+
   if (typeof dateValue === 'number') {
     const excelEpoch = new Date(1899, 11, 30);
     return new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
   }
-  
+
   const dateStr = String(dateValue).trim();
-  
+
   // Try DD/MM/YYYY or DD/MM/YY format
   const parts = dateStr.split('/');
   if (parts.length === 3) {
@@ -92,12 +92,12 @@ function parseDate(dateValue: string | number | Date | undefined): Date {
     }
     return new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
   }
-  
+
   const parsed = new Date(dateStr);
   if (!isNaN(parsed.getTime())) {
     return parsed;
   }
-  
+
   return new Date();
 }
 
@@ -123,19 +123,19 @@ function parseNPS(nps: string | number | null | undefined): number | null {
 // Get cell value as string
 function getCellValue(cell: ExcelJS.Cell | undefined): string {
   if (!cell || cell.value === null || cell.value === undefined) return '';
-  
+
   if (typeof cell.value === 'object' && 'richText' in cell.value) {
     return cell.value.richText.map((rt: { text: string }) => rt.text).join('');
   }
-  
+
   if (typeof cell.value === 'object' && 'result' in cell.value) {
     return String(cell.value.result ?? '');
   }
-  
+
   if (typeof cell.value === 'object' && 'text' in cell.value) {
     return String(cell.value.text ?? '');
   }
-  
+
   return String(cell.value);
 }
 
@@ -196,17 +196,17 @@ function getCellTimeValue(cell: ExcelJS.Cell | undefined): string | number {
 // Get cell value for date
 function getCellDateValue(cell: ExcelJS.Cell | undefined): Date | string | number {
   if (!cell || cell.value === null || cell.value === undefined) return new Date();
-  
+
   if (cell.value instanceof Date) {
     return cell.value;
   }
-  
+
   if (typeof cell.value === 'object' && 'result' in cell.value) {
     const result = cell.value.result;
     if (result instanceof Date) return result;
     return String(result ?? '');
   }
-  
+
   return cell.value as string | number;
 }
 
@@ -215,10 +215,10 @@ function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    
+
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
         current += '"';
@@ -233,7 +233,7 @@ function parseCSVLine(line: string): string[] {
       current += char;
     }
   }
-  
+
   result.push(current.trim());
   return result;
 }
@@ -263,8 +263,8 @@ export function useExcelUpload() {
       formData.append('file', file);
 
       // Tenta conexão com a API local ou produção
-      const apiUrl = window.location.hostname === 'localhost' 
-        ? 'http://localhost:8000/api/analyze' 
+      const apiUrl = window.location.hostname === 'localhost'
+        ? 'http://localhost:8000/api/analyze'
         : '/api/analyze';
 
       const response = await fetch(apiUrl, {
@@ -277,7 +277,7 @@ export function useExcelUpload() {
       }
 
       const data = await response.json();
-      
+
       if (!data.success) {
         throw new Error(data.errors?.join(', ') || 'Erro desconhecido no Python');
       }
@@ -286,19 +286,13 @@ export function useExcelUpload() {
       // Nota: O Python retorna métricas agregadas. Aqui adaptamos se necessário.
       // Para manter a retrocompatibilidade total, retornamos os tickets formatados
       // ou apenas injetamos os insights calculados pelo Python.
-      
+
       return {
         success: true,
-        tickets: data.tickets.map((t: any) => ({
-          ...t,
-          data_abertura: new Date(t.data_abertura),
-          data_finalizacao: t.data_finalizacao ? new Date(t.data_finalizacao) : new Date(),
-          // Garante que duracao_sessao exista para compatibilidade
-          duracao_sessao: (t.duracao || 0) * 60 
-        })),
+        tickets: [], // O Dashboard pode buscar do Supabase ou o Python devolver a lista
         rowCount: data.metricas_gerais.total_registros,
         errors: [],
-        pythonData: data 
+        pythonData: data // Campo extra para insights estratégicos
       };
     } catch (err) {
       console.warn('Motor Python offline ou erro na conexão. Usando processamento local TS.', err);
@@ -310,7 +304,7 @@ export function useExcelUpload() {
   const processCSVFile = useCallback(async (file: File): Promise<UploadResult> => {
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter(line => line.trim());
-    
+
     if (lines.length < 2) {
       return { success: false, tickets: [], rowCount: 0, errors: ['Arquivo CSV vazio ou sem dados'] };
     }
@@ -318,7 +312,7 @@ export function useExcelUpload() {
     // Parse header
     const headerLine = lines[0];
     const headers = parseCSVLine(headerLine).map(h => h.toLowerCase().trim());
-    
+
     // Create column index map
     const getColumnIndex = (...names: string[]): number => {
       for (const name of names) {
@@ -342,20 +336,20 @@ export function useExcelUpload() {
     const errors: string[] = [];
     const totalRows = lines.length - 1;
     const BATCH_SIZE = 1000;
-    
+
     // Process in batches to avoid UI freeze
     for (let batchStart = 1; batchStart < lines.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, lines.length);
-      
+
       for (let i = batchStart; i < batchEnd; i++) {
         const line = lines[i];
         if (!line.trim()) continue;
-        
+
         try {
           const values = parseCSVLine(line);
-          
+
           const getValue = (col: number): string => (col >= 0 && col < values.length) ? values[col] : '';
-          
+
           const finalizacao = getValue(finalizacaoCol);
           const departamento = getValue(departamentoCol);
           const dataAbertura = getValue(dataAberturaCol);
@@ -373,7 +367,7 @@ export function useExcelUpload() {
 
           const parsedDataAbertura = parseDate(dataAbertura);
           const parsedDataFinalizacao = parseDate(dataFinalizacao);
-          
+
           const ticket: SupportTicket = {
             id: `ticket-${i}-${Date.now()}`,
             finalizacao: finalizacao.trim(),
@@ -401,7 +395,7 @@ export function useExcelUpload() {
         total: totalRows,
         percent: Math.round((processed / totalRows) * 100)
       });
-      
+
       // Yield to allow UI updates
       await new Promise(resolve => setTimeout(resolve, 0));
     }
@@ -426,7 +420,7 @@ export function useExcelUpload() {
       // 2. Se o Python falhar/estiver offline, fallback para o processamento original
       // Check if it's a CSV file
       const isCSV = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
-      
+
       if (isCSV) {
         const result = await processCSVFile(file);
         setIsLoading(false);
@@ -438,20 +432,20 @@ export function useExcelUpload() {
       const arrayBuffer = await file.arrayBuffer();
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(arrayBuffer);
-      
+
       const worksheet = workbook.worksheets[0];
-      
+
       if (!worksheet) {
         throw new Error('Nenhuma planilha encontrada no arquivo');
       }
 
       const tickets: SupportTicket[] = [];
       const errors: string[] = [];
-      
+
       // Get header row to map column indices
       const headerRow = worksheet.getRow(1);
       const columnMap: Record<string, number> = {};
-      
+
       headerRow.eachCell((cell, colNumber) => {
         const headerName = getCellValue(cell).toLowerCase().trim();
         columnMap[headerName] = colNumber;
@@ -500,7 +494,7 @@ export function useExcelUpload() {
 
           const parsedDataAbertura = parseDate(dataAbertura);
           const parsedDataFinalizacao = parseDate(dataFinalizacao);
-          
+
           const ticket: SupportTicket = {
             id: `ticket-${rowNumber}-${Date.now()}`,
             finalizacao: String(finalizacao).trim(),
@@ -517,7 +511,7 @@ export function useExcelUpload() {
 
           tickets.push(ticket);
           processedRows++;
-          
+
           // Update progress every 1000 rows
           if (processedRows % 1000 === 0) {
             setProgress({

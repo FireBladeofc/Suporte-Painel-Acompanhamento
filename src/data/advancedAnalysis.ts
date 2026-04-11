@@ -356,10 +356,12 @@ export function gerarPlanoAcaoSemanal(
   if (tickets.length === 0) return plano;
 
   // Métricas gerais rápidas
-  const leadsSet = new Set(tickets.map(t => t.lead_number));
+  // Normalização consistente com useUniqueContacts e calculateAgentMetrics
+  const leadsSet = new Set(tickets.map(t => t.lead_number.replace(/[\s\-().+]/g, '').toLowerCase().trim()));
   const contatosUnicos = leadsSet.size;
-  const taxaRechamadas = contatosUnicos > 0
-    ? round(((tickets.length - contatosUnicos) / contatosUnicos) * 100, 2)
+  // Denominador = total de atendimentos (alinhado com ExecutivePanel e calculateAgentMetrics)
+  const taxaRechamadas = tickets.length > 0
+    ? round(((tickets.length - contatosUnicos) / tickets.length) * 100, 2)
     : 0;
 
   const ticketsComEsperaValida = tickets.filter(t => t.espera >= 0 && t.espera <= MAX_ESPERA_VALIDA);
@@ -458,7 +460,8 @@ export function analisarLeadsComRisco(
   
   tickets.forEach(t => {
     if (t.duracao <= 0 || t.duracao > MAX_DURACAO_ATIVA) return;
-    const leadNum = t.lead_number;
+    // Normalização consistente com useUniqueContacts e calculateAgentMetrics
+    const leadNum = t.lead_number.replace(/[\s\-().+]/g, '').toLowerCase().trim();
     if (!leadNum) return;
     const arr = leadMap.get(leadNum) || [];
     arr.push(t);
@@ -503,7 +506,8 @@ export function executarAnaliseAvancada(
   allTickets?: SupportTicket[]
 ): AnaliseAvancadaResult {
   // Métricas gerais baseadas nos tickets filtrados
-  const leadsSet = new Set(tickets.map(t => t.lead_number));
+  // Normalização consistente com useUniqueContacts e calculateAgentMetrics
+  const leadsSet = new Set(tickets.map(t => t.lead_number.replace(/[\s\-().+]/g, '').toLowerCase().trim()));
   const contatosUnicos = leadsSet.size;
   const ticketsComDuracao = tickets.filter(t => t.duracao > 0 && t.duracao <= MAX_DURACAO_ATIVA);
   const tempoMedioAtendimento = ticketsComDuracao.length > 0
@@ -520,8 +524,9 @@ export function executarAnaliseAvancada(
     ? round(npsValues.reduce((a, b) => a + b, 0) / npsValues.length, 2)
     : null;
 
-  const taxaRechamadas = contatosUnicos > 0
-    ? round(((tickets.length - contatosUnicos) / contatosUnicos) * 100, 2)
+  // Denominador = total de atendimentos (alinhado com ExecutivePanel e calculateAgentMetrics)
+  const taxaRechamadas = tickets.length > 0
+    ? round(((tickets.length - contatosUnicos) / tickets.length) * 100, 2)
     : 0;
 
   const taxaAvaliacao = tickets.length > 0

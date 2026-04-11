@@ -263,7 +263,8 @@ export function AgentPerformancePanel({ agentMetrics }: AgentPerformancePanelPro
                     {agent.npsMedio !== null ? (
                       <span className={cn(
                         "font-mono text-sm px-2.5 py-1 rounded-lg font-medium",
-                        agent.npsMedio >= 4.6 
+                        // Escala 0–5: >= 4.5 = ótimo | 4.0-4.49 = atenção | < 4 = detrator
+                        agent.npsMedio >= 4.5 
                           ? "bg-success/15 text-success" 
                           : agent.npsMedio >= 4.0
                             ? "bg-warning/15 text-warning"

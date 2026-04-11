@@ -47,9 +47,16 @@ export function InsightsPanel({ tickets, agentMetrics }: InsightsPanelProps) {
       : null;
     
     const avgTME = Math.round(tickets.reduce((acc, t) => acc + t.espera, 0) / total);
-    const avgTMA = Math.round(tickets.reduce((acc, t) => acc + t.duracao, 0) / total);
+    // TMA Operacional: mesmo cap de 24h (1.440 min) usado em calculateAgentMetrics e TMA Operacional
+    // da Visão Executiva — exclui outliers de tickets em aberto por tempo excessivo
+    const MAX_TMA_CAP = 1440;
+    const validTMATickets = tickets.filter(t => t.duracao > 0 && t.duracao <= MAX_TMA_CAP);
+    const avgTMA = validTMATickets.length > 0
+      ? Math.round(validTMATickets.reduce((acc, t) => acc + t.duracao, 0) / validTMATickets.length)
+      : 0;
     
-    const leadsSet = new Set(tickets.map(t => t.lead_number));
+    const leadsSet = new Set(tickets.map(t => t.lead_number.replace(/[\s\-().+]/g, '').toLowerCase().trim()));
+    // Denominador = total de atendimentos (padrão único do sistema)
     const taxaRechamadas = Math.round(((total - leadsSet.size) / total) * 100);
     
     const taxaAvaliacao = Math.round((npsValues.length / total) * 100);
@@ -144,7 +151,7 @@ export function InsightsPanel({ tickets, agentMetrics }: InsightsPanelProps) {
             {[
               { value: summary.total, label: 'Atendimentos', highlight: true },
               { value: summary.avgNPS || '-', label: 'NPS Médio' },
-              { value: `${summary.avgTMA}min`, label: 'TMA Médio' },
+              { value: `${summary.avgTMA}min`, label: 'TMA Operacional' },
               { value: `${summary.taxaRechamadas}%`, label: 'Rechamadas' },
               { value: `${summary.taxaAvaliacao}%`, label: 'Taxa Aval.' },
             ].map((item, i) => (

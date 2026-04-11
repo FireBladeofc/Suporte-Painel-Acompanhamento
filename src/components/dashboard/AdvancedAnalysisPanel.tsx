@@ -561,7 +561,8 @@ export function AdvancedAnalysisPanel({
                       <td
                         className={cn(
                           'py-3 px-4 text-center font-mono font-bold',
-                          item.npsMedio >= 8 ? 'text-success' : item.npsMedio < 6 ? 'text-destructive' : 'text-foreground'
+                          // Escala 0–5: >= 4.5 = ótimo | 4.0-4.49 = atenção | < 4 = detrator
+                          item.npsMedio >= 4.5 ? 'text-success' : item.npsMedio < 4 ? 'text-destructive' : 'text-foreground'
                         )}
                       >
                         {item.npsMedio.toFixed(2)}
