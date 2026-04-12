@@ -5,6 +5,16 @@ import { useToast } from '@/hooks/use-toast';
 
 export type AppRole = 'admin' | 'manager' | 'user';
 
+/**
+ * Mapeamento amigável de roles para exibição na UI
+ * 'user' é tratado internamente como 'Agente' no painel
+ */
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: 'Admin',
+  manager: 'Gerente',
+  user: 'Agente',
+};
+
 interface UserRole {
   id: string;
   user_id: string;
@@ -222,5 +232,8 @@ export function useAuth() {
     hasRole,
     canManageCollaborators,
     isAuthenticated: !!session,
+    // Atalhos de role para uso simplificado nos componentes
+    isAdmin: userRole === 'admin',
+    isAgent: userRole === 'user' || userRole === null,
   };
 }
