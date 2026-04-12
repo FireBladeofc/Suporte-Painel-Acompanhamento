@@ -20,8 +20,8 @@ AS $$
 BEGIN
   -- Verifica se o chamador é um admin
   IF NOT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Acesso negado: apenas admins podem listar usuários';
   END IF;
@@ -31,7 +31,7 @@ BEGIN
       u.id        AS user_id,
       u.email     AS email,
       u.created_at AS created_at,
-      COALESCE(ur.role, 'user') AS role
+      COALESCE(ur.role, 'user')::TEXT AS role
     FROM auth.users u
     LEFT JOIN public.user_roles ur ON ur.user_id = u.id
     ORDER BY u.created_at ASC;
