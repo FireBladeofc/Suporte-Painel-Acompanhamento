@@ -6,6 +6,9 @@
 
 -- Função que retorna todos os usuários com seus roles
 -- SECURITY DEFINER: roda com privilégios do owner (contorna RLS do auth.users)
+-- Remove a função existente para evitar erro de assinatura (cannot change return type)
+DROP FUNCTION IF EXISTS public.get_all_users_with_roles();
+
 CREATE OR REPLACE FUNCTION public.get_all_users_with_roles()
 RETURNS TABLE (
   user_id   UUID,
@@ -28,10 +31,10 @@ BEGIN
 
   RETURN QUERY
     SELECT
-      u.id        AS user_id,
-      u.email     AS email,
-      u.created_at AS created_at,
-      COALESCE(ur.role, 'user')::TEXT AS role
+      u.id::UUID,
+      u.email::TEXT,
+      u.created_at::TIMESTAMPTZ,
+      COALESCE(ur.role, 'user')::TEXT
     FROM auth.users u
     LEFT JOIN public.user_roles ur ON ur.user_id = u.id
     ORDER BY u.created_at ASC;

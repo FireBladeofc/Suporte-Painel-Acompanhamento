@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SupportTicket } from '@/types/support';
+import { supabase } from '@/integrations/supabase/client';
 
 const DB_NAME = 'painel-suporte-db';
 const DB_VERSION = 1;
@@ -107,10 +108,40 @@ export function useTicketStorage(): TicketStorageState {
     let cancelled = false;
 
     (async () => {
+      setIsLoadingStorage(true);
       try {
+        // 1. Tenta carregar do Supabase (dados globais compartilhados)
+        const { data: remoteImport, error: remoteError } = await supabase
+          .from('ticket_imports')
+          .select('filename, imported_at, tickets')
+          .eq('is_active', true)
+          .order('imported_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!cancelled && remoteImport) {
+          // console.log('[useTicketStorage] Carregando dados globais do Supabase');
+          const rawTickets = remoteImport.tickets as any[];
+          const restored = rawTickets.map((t: any) => ({
+            ...t,
+            data_abertura: new Date(t.data_abertura),
+            data_finalizacao: new Date(t.data_finalizacao),
+          })) as SupportTicket[];
+
+          setTickets(restored);
+          setLastFilename(remoteImport.filename);
+          setLastImportedAt(new Date(remoteImport.imported_at));
+          setIsLoadingStorage(false);
+          return;
+        }
+
+        if (remoteError) {
+          console.warn('[useTicketStorage] Erro ao buscar do Supabase:', remoteError);
+        }
+
+        // 2. Fallback para IndexedDB (dados locais do navegador)
         const record = await loadFromDB();
         if (!cancelled && record) {
-          // Restaura datas que viraram string no JSON
           const restored = record.tickets.map((t) => ({
             ...t,
             data_abertura: new Date(t.data_abertura),
@@ -121,7 +152,7 @@ export function useTicketStorage(): TicketStorageState {
           setLastImportedAt(new Date(record.importedAt));
         }
       } catch (err) {
-        console.warn('[useTicketStorage] Erro ao carregar do IndexedDB:', err);
+        console.warn('[useTicketStorage] Erro ao carregar dados:', err);
       } finally {
         if (!cancelled) setIsLoadingStorage(false);
       }
@@ -133,12 +164,28 @@ export function useTicketStorage(): TicketStorageState {
   const persistTickets = useCallback(async (newTickets: SupportTicket[], filename: string) => {
     setTickets(newTickets);
     setLastFilename(filename);
-    setLastImportedAt(new Date());
+    const now = new Date();
+    setLastImportedAt(now);
 
     try {
+      // 1. Salva no IndexedDB (cache local)
       await saveToDB(newTickets, filename);
+
+      // 2. Salva no Supabase (compartilhamento global)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('ticket_imports').insert({
+          filename,
+          tickets: newTickets as any,
+          ticket_count: newTickets.length,
+          imported_by: user.id,
+          is_active: true
+        });
+
+        if (error) throw error;
+      }
     } catch (err) {
-      console.warn('[useTicketStorage] Erro ao salvar no IndexedDB:', err);
+      console.warn('[useTicketStorage] Erro ao persistir dados:', err);
     }
   }, []);
 
@@ -148,9 +195,18 @@ export function useTicketStorage(): TicketStorageState {
     setLastImportedAt(null);
 
     try {
+      // 1. Limpa IndexedDB
       await clearDB();
+
+      // 2. Inativa imports no Supabase
+      const { error } = await supabase
+        .from('ticket_imports')
+        .update({ is_active: false })
+        .eq('is_active', true);
+      
+      if (error) console.error('[useTicketStorage] Erro ao inativar no Supabase:', error);
     } catch (err) {
-      console.warn('[useTicketStorage] Erro ao limpar IndexedDB:', err);
+      console.warn('[useTicketStorage] Erro ao limpar dados:', err);
     }
   }, []);
 
