@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SupportTicket } from '@/types/support';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const DB_NAME = 'painel-suporte-db';
 const DB_VERSION = 1;
@@ -85,23 +86,27 @@ export interface TicketStorageState {
   lastImportedAt: Date | null;
   /** true enquanto o IndexedDB está sendo lido na inicialização */
   isLoadingStorage: boolean;
+  /** Indica se está sincronizando com o Supabase */
+  isSyncing: boolean;
+  /** Indica se os dados atuais vieram da nuvem */
+  isCloudSynced: boolean;
   /** Salva novos tickets (chamado após upload da planilha) */
-  persistTickets: (tickets: SupportTicket[], filename: string) => Promise<void>;
+  persistTickets: (tickets: SupportTicket[], filename: string) => Promise<boolean>;
   /** Limpa os dados persistidos */
   clearTickets: () => Promise<void>;
 }
 
 /**
- * Hook que gerencia tickets com persistência via IndexedDB.
- * - Ao montar, tenta carregar o último import salvo.
- * - Ao importar nova planilha, substitui o registro salvo.
- * - Ao recarregar a página, os dados voltam automaticamente.
+ * Hook que gerencia tickets com persistência via IndexedDB e Supabase.
  */
 export function useTicketStorage(): TicketStorageState {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [lastFilename, setLastFilename] = useState<string | null>(null);
   const [lastImportedAt, setLastImportedAt] = useState<Date | null>(null);
   const [isLoadingStorage, setIsLoadingStorage] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
+  const { toast } = useToast();
 
   // Carrega dados ao iniciar
   useEffect(() => {
@@ -120,7 +125,6 @@ export function useTicketStorage(): TicketStorageState {
           .maybeSingle();
 
         if (!cancelled && remoteImport) {
-          // console.log('[useTicketStorage] Carregando dados globais do Supabase');
           const rawTickets = remoteImport.tickets as any[];
           const restored = rawTickets.map((t: any) => ({
             ...t,
@@ -131,6 +135,7 @@ export function useTicketStorage(): TicketStorageState {
           setTickets(restored);
           setLastFilename(remoteImport.filename);
           setLastImportedAt(new Date(remoteImport.imported_at));
+          setIsCloudSynced(true);
           setIsLoadingStorage(false);
           return;
         }
@@ -150,6 +155,7 @@ export function useTicketStorage(): TicketStorageState {
           setTickets(restored);
           setLastFilename(record.filename);
           setLastImportedAt(new Date(record.importedAt));
+          setIsCloudSynced(false);
         }
       } catch (err) {
         console.warn('[useTicketStorage] Erro ao carregar dados:', err);
@@ -162,37 +168,78 @@ export function useTicketStorage(): TicketStorageState {
   }, []);
 
   const persistTickets = useCallback(async (newTickets: SupportTicket[], filename: string) => {
-    setTickets(newTickets);
-    setLastFilename(filename);
-    const now = new Date();
-    setLastImportedAt(now);
-
+    setIsSyncing(true);
+    
     try {
-      // 1. Salva no IndexedDB (cache local)
+      // 1. Salva no IndexedDB (cache local imediato)
       await saveToDB(newTickets, filename);
+      
+      // Atualiza estado local imediatamente para fluidez da UI
+      setTickets(newTickets);
+      setLastFilename(filename);
+      const now = new Date();
+      setLastImportedAt(now);
 
       // 2. Salva no Supabase (compartilhamento global)
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error } = await supabase.from('ticket_imports').insert({
-          filename,
-          tickets: newTickets as any,
-          ticket_count: newTickets.length,
-          imported_by: user.id,
-          is_active: true
-        });
+      if (!user) throw new Error('Usuário não autenticado para sincronizar.');
 
-        if (error) throw error;
+      const { error } = await supabase.from('ticket_imports').insert({
+        filename,
+        tickets: newTickets as any,
+        ticket_count: newTickets.length,
+        imported_by: user.id,
+        is_active: true
+      });
+
+      if (error) {
+        console.error('[useTicketStorage] Erro Supabase:', error);
+        
+        // Se for erro de payload muito grande
+        if (error.message?.includes('payload too large') || error.code === '413') {
+          toast({
+            title: 'Planilha muito grande',
+            description: 'Os dados foram salvos APENAS no seu navegador. Outros usuários não verão este painel.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Erro na Sincronização',
+            description: 'Dados salvos localmente, mas a sincronização com a nuvem falhou.',
+            variant: 'destructive',
+          });
+        }
+        setIsCloudSynced(false);
+        return false;
       }
+
+      toast({
+        title: 'Sincronização Concluída',
+        description: 'Os dados foram salvos e estão disponíveis para todos os usuários.',
+      });
+      
+      setIsCloudSynced(true);
+      return true;
+
     } catch (err) {
-      console.warn('[useTicketStorage] Erro ao persistir dados:', err);
+      console.error('[useTicketStorage] Erro fatal na persistência:', err);
+      toast({
+        title: 'Erro de Persistência',
+        description: 'Ocorreu um erro ao salvar os dados.',
+        variant: 'destructive',
+      });
+      setIsCloudSynced(false);
+      return false;
+    } finally {
+      setIsSyncing(false);
     }
-  }, []);
+  }, [toast]);
 
   const clearTickets = useCallback(async () => {
     setTickets([]);
     setLastFilename(null);
     setLastImportedAt(null);
+    setIsCloudSynced(false);
 
     try {
       // 1. Limpa IndexedDB
@@ -215,6 +262,8 @@ export function useTicketStorage(): TicketStorageState {
     lastFilename,
     lastImportedAt,
     isLoadingStorage,
+    isSyncing,
+    isCloudSynced,
     persistTickets,
     clearTickets,
   };

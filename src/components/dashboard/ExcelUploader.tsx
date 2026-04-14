@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { SupportTicket } from '@/types/support';
 
 interface ExcelUploaderProps {
-  onDataLoaded: (tickets: SupportTicket[], filename: string) => void;
+  onDataLoaded: (tickets: SupportTicket[], filename: string) => Promise<void> | void;
 }
 
 export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
@@ -59,7 +59,7 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
     setShowResult(true);
 
     if (result.success && result.tickets.length > 0) {
-      onDataLoaded(result.tickets, file.name);
+      await onDataLoaded(result.tickets, file.name);
     }
 
     // Reset input

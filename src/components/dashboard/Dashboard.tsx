@@ -31,6 +31,9 @@ import {
   Crown,
   Shield,
   Lock,
+  Cloud,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react';
 import { startOfDay } from 'date-fns';
 
@@ -39,11 +42,9 @@ const ADMIN_TABS = ['executive', 'operational', 'agents', 'insights', 'advanced'
 const AGENT_TABS = ['executive', 'operational', 'agents'];
 
 export function Dashboard() {
-  const {
-    tickets,
-    lastFilename,
-    lastImportedAt,
     isLoadingStorage,
+    isSyncing,
+    isCloudSynced,
     persistTickets,
   } = useTicketStorage();
 
@@ -70,8 +71,8 @@ export function Dashboard() {
   };
 
   // Handle Excel data import
-  const handleDataLoaded = useCallback((newTickets: SupportTicket[], filename: string) => {
-    persistTickets(newTickets, filename);
+  const handleDataLoaded = useCallback(async (newTickets: SupportTicket[], filename: string) => {
+    await persistTickets(newTickets, filename);
     // Reset filters when new data is loaded
     setFilters({
       agente: null,
@@ -142,6 +143,36 @@ export function Dashboard() {
     );
   };
 
+  /** Indicador de status de sincronização */
+  const SyncStatusIndicator = () => {
+    if (tickets.length === 0) return null;
+
+    if (isSyncing) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 animate-pulse">
+          <RefreshCw className="w-3 h-3 animate-spin" />
+          Sincronizando...
+        </div>
+      );
+    }
+
+    if (isCloudSynced) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="Dados sincronizados com a nuvem">
+          <Cloud className="w-3 h-3" />
+          Nuvem
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Dados salvos apenas no navegador. Sincronização falhou.">
+        <CloudOff className="w-3 h-3" />
+        Local
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background noise-overlay">
       {/* Loading state while IndexedDB is being read */}
@@ -180,8 +211,9 @@ export function Dashboard() {
                     </span>
                   )}
                 </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                   Análise operacional e insights gerenciais
+                  {tickets.length > 0 && <SyncStatusIndicator />}
                 </p>
               </div>
             </motion.div>
