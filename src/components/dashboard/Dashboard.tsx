@@ -42,6 +42,10 @@ const ADMIN_TABS = ['executive', 'operational', 'agents', 'insights', 'advanced'
 const AGENT_TABS = ['executive', 'operational', 'agents'];
 
 export function Dashboard() {
+  const {
+    tickets,
+    lastFilename,
+    lastImportedAt,
     isLoadingStorage,
     isSyncing,
     isCloudSynced,
