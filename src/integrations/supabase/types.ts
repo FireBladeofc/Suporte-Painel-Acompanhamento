@@ -418,6 +418,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_imports: {
+        Row: {
+          id: string
+          imported_by: string
+          filename: string
+          imported_at: string
+          tickets: Json
+          ticket_count: number
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          imported_by: string
+          filename: string
+          imported_at?: string
+          tickets: Json
+          ticket_count?: number
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          imported_by?: string
+          filename?: string
+          imported_at?: string
+          tickets?: Json
+          ticket_count?: number
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_imports_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

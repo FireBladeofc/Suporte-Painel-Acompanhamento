@@ -124,6 +124,19 @@ export function useTicketStorage(): TicketStorageState {
           .limit(1)
           .maybeSingle();
 
+        if (remoteError) {
+          // Tabela não existe no Supabase (migration não aplicada)
+          if (remoteError.code === '42P01' || remoteError.message?.includes('does not exist')) {
+            console.error(
+              '[useTicketStorage] ❌ TABELA ticket_imports NÃO EXISTE NO SUPABASE.\n' +
+              'Execute o script SQL de correção no Supabase Dashboard > SQL Editor.\n' +
+              'Arquivo: supabase/migrations/20260403193000_create_ticket_imports.sql'
+            );
+          } else {
+            console.warn('[useTicketStorage] Erro ao buscar do Supabase:', remoteError.code, remoteError.message);
+          }
+        }
+
         if (!cancelled && remoteImport) {
           const rawTickets = remoteImport.tickets as any[];
           const restored = rawTickets.map((t: any) => ({
@@ -138,10 +151,6 @@ export function useTicketStorage(): TicketStorageState {
           setIsCloudSynced(true);
           setIsLoadingStorage(false);
           return;
-        }
-
-        if (remoteError) {
-          console.warn('[useTicketStorage] Erro ao buscar do Supabase:', remoteError);
         }
 
         // 2. Fallback para IndexedDB (dados locais do navegador)
