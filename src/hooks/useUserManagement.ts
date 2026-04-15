@@ -20,6 +20,7 @@ export function useUserManagement() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState<string | null>(null); // user_id sendo atualizado
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // user_id sendo excluído
   const { toast } = useToast();
 
   /** Lista todos os usuários com seus roles via RPC segura */
@@ -100,11 +101,49 @@ export function useUserManagement() {
     [toast]
   );
 
+  /** Exclui um usuário permanentemente via RPC admin segura */
+  const deleteUser = useCallback(
+    async (targetUserId: string) => {
+      setIsDeleting(targetUserId);
+      try {
+        const { error } = await supabase.rpc('admin_delete_user', {
+          target_user_id: targetUserId,
+        });
+
+        if (error) {
+          toast({
+            title: 'Erro ao excluir usuário',
+            description: error.message,
+            variant: 'destructive',
+          });
+          return false;
+        }
+
+        // Remove da lista local
+        setUsers((prev) => prev.filter((u) => u.user_id !== targetUserId));
+
+        toast({
+          title: 'Usuário excluído',
+          description: 'O usuário foi removido permanentemente do sistema.',
+        });
+        return true;
+      } catch (err) {
+        console.error('[useUserManagement] Erro ao excluir usuário:', err);
+        return false;
+      } finally {
+        setIsDeleting(null);
+      }
+    },
+    [toast]
+  );
+
   return {
     users,
     isLoading,
     isUpdating,
+    isDeleting,
     fetchUsers,
     updateUserRole,
+    deleteUser,
   };
 }

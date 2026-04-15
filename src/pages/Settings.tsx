@@ -16,6 +16,7 @@ import {
   Mail,
   Calendar,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,15 +66,20 @@ function UserCard({
   userRow,
   currentUserId,
   isUpdating,
+  isDeleting,
   onRoleChange,
+  onDelete,
 }: {
   userRow: UserWithRole;
   currentUserId: string;
   isUpdating: string | null;
+  isDeleting: string | null;
   onRoleChange: (userId: string, role: AppRole) => void;
+  onDelete: (userId: string) => void;
 }) {
   const isSelf = userRow.user_id === currentUserId;
   const busy = isUpdating === userRow.user_id;
+  const deleting = isDeleting === userRow.user_id;
 
   const formattedDate = new Date(userRow.created_at).toLocaleDateString(
     'pt-BR',
@@ -153,8 +159,23 @@ function UserCard({
             </SelectContent>
           </Select>
         )}
-        {isSelf && (
+        {isSelf ? (
           <span className="text-xs text-muted-foreground">(seu perfil)</span>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(userRow.user_id)}
+            disabled={deleting || busy}
+            className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            title="Excluir Usuário"
+          >
+            {deleting ? (
+              <Loader2 className="w-4 h-4 animate-spin text-destructive" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+          </Button>
         )}
       </div>
     </motion.div>
@@ -165,8 +186,28 @@ function UserCard({
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, isAdmin, userRole } = useAuth();
-  const { users, isLoading, isUpdating, fetchUsers, updateUserRole } =
-    useUserManagement();
+  const { 
+    users, 
+    isLoading, 
+    isUpdating, 
+    isDeleting, 
+    fetchUsers, 
+    updateUserRole, 
+    deleteUser 
+  } = useUserManagement();
+
+  const handleDeleteUser = async (userId: string) => {
+    const userToDelete = users.find(u => u.user_id === userId);
+    if (!userToDelete) return;
+
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir permanentemente o usuário ${userToDelete.email}?\n\nEsta ação NÃO pode ser desfeita e removerá todos os dados vinculados a este usuário.`
+    );
+
+    if (confirmed) {
+      await deleteUser(userId);
+    }
+  };
 
   // Redireciona não-admins imediatamente
   useEffect(() => {
@@ -318,7 +359,9 @@ export default function SettingsPage() {
                     userRow={u}
                     currentUserId={user?.id ?? ''}
                     isUpdating={isUpdating}
+                    isDeleting={isDeleting}
                     onRoleChange={updateUserRole}
+                    onDelete={handleDeleteUser}
                   />
                 ))}
               </div>
