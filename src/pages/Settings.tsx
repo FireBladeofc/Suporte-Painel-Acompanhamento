@@ -17,8 +17,10 @@ import {
   Calendar,
   ChevronDown,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -34,6 +36,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /** Badge colorida por role */
 function RoleBadge({ role }: { role: AppRole }) {
@@ -196,17 +206,29 @@ export default function SettingsPage() {
     deleteUser 
   } = useUserManagement();
 
-  const handleDeleteUser = async (userId: string) => {
+  // SEG-012: estado do modal de confirmação de exclusão
+  const [deleteTarget, setDeleteTarget] = useState<UserWithRole | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const CONFIRM_KEYWORD = 'CONFIRMAR';
+
+  const handleDeleteUser = (userId: string) => {
     const userToDelete = users.find(u => u.user_id === userId);
     if (!userToDelete) return;
+    // Abre o modal de confirmação em vez de window.confirm()
+    setDeleteTarget(userToDelete);
+    setDeleteConfirmInput('');
+  };
 
-    const confirmed = window.confirm(
-      `Tem certeza que deseja excluir permanentemente o usuário ${userToDelete.email}?\n\nEsta ação NÃO pode ser desfeita e removerá todos os dados vinculados a este usuário.`
-    );
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || deleteConfirmInput !== CONFIRM_KEYWORD) return;
+    await deleteUser(deleteTarget.user_id);
+    setDeleteTarget(null);
+    setDeleteConfirmInput('');
+  };
 
-    if (confirmed) {
-      await deleteUser(userId);
-    }
+  const handleCancelDelete = () => {
+    setDeleteTarget(null);
+    setDeleteConfirmInput('');
   };
 
   // Redireciona não-admins imediatamente
@@ -385,6 +407,58 @@ export default function SettingsPage() {
             usuário.
           </p>
         </motion.div>
+        {/* SEG-012: Modal de confirmação seguro com campo de digitação */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) handleCancelDelete(); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full bg-destructive/10">
+                  <AlertTriangle className="w-6 h-6 text-destructive" />
+                </div>
+                <AlertDialogTitle className="text-destructive">Excluir Usuário</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="text-left space-y-3">
+                <p>
+                  Você está prestes a excluir permanentemente o usuário:
+                </p>
+                <div className="p-3 rounded-lg bg-muted border border-border font-mono text-sm text-foreground">
+                  {deleteTarget?.email}
+                </div>
+                <p className="text-destructive/80 text-sm">
+                  Esta ação <strong>NÃO pode ser desfeita</strong> e removerá todos os dados vinculados a este usuário.
+                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Para confirmar, digite <strong className="text-foreground">{CONFIRM_KEYWORD}</strong> abaixo:
+                  </p>
+                  <Input
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder={CONFIRM_KEYWORD}
+                    className="border-destructive/40 focus-visible:ring-destructive/40"
+                    autoFocus
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={handleCancelDelete} disabled={isDeleting === deleteTarget?.user_id}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deleteConfirmInput !== CONFIRM_KEYWORD || isDeleting === deleteTarget?.user_id}
+              >
+                {isDeleting === deleteTarget?.user_id ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Excluindo...</>
+                ) : (
+                  <><Trash2 className="w-4 h-4 mr-2" />Excluir Permanentemente</>
+                )}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

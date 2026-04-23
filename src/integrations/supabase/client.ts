@@ -13,9 +13,10 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// SEG-010: placeholders sem ID real do projeto — o erro de configuração é logado acima
 export const supabase = createClient<Database>(
-  SUPABASE_URL || "https://placeholder-vslmnspyotalorjltlvr.supabase.co", 
-  SUPABASE_PUBLISHABLE_KEY || "placeholder-key", 
+  SUPABASE_URL || "https://placeholder.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY || "",
   {
     auth: {
       storage: localStorage,

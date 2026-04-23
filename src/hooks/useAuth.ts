@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -59,9 +59,14 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  // SEG-006: estado separado para carregamento de role — evita janela TOCTOU
+  const [isRoleLoading, setIsRoleLoading] = useState(false);
+  // SEG-011: contador de tentativas falhas para rate limiting progressivo
+  const failedAttempts = useRef(0);
   const { toast } = useToast();
 
   const fetchUserRole = useCallback(async (userId: string) => {
+    setIsRoleLoading(true);
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -70,7 +75,7 @@ export function useAuth() {
         .single();
 
       if (error) {
-        // If no role found, user is a basic 'user' role
+        // Se não houver role, usuário recebe role básico 'user'
         if (error.code === 'PGRST116') {
           setUserRole('user');
           return;
@@ -84,6 +89,9 @@ export function useAuth() {
     } catch (err) {
       console.error('Error fetching user role:', err);
       setUserRole('user');
+    } finally {
+      // SEG-006: só libera isRoleLoading após role ser definido
+      setIsRoleLoading(false);
     }
   }, []);
 
@@ -101,6 +109,7 @@ export function useAuth() {
           }, 0);
         } else {
           setUserRole(null);
+          setIsRoleLoading(false);
         }
         setLoading(false);
       }
@@ -120,6 +129,13 @@ export function useAuth() {
   }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
+    // SEG-011: delay exponencial progressivo após falhas consecutivas
+    const attempts = failedAttempts.current;
+    if (attempts >= 5) {
+      const delayMs = Math.min(Math.pow(2, attempts - 4) * 1000, 30000); // máx 30s
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -127,6 +143,7 @@ export function useAuth() {
       });
 
       if (error) {
+        failedAttempts.current += 1;
         toast({
           title: 'Erro ao entrar',
           description: translateAuthError(error.message),
@@ -135,6 +152,9 @@ export function useAuth() {
         return { error };
       }
 
+      // Login bem-sucedido: resetar contador de falhas
+      failedAttempts.current = 0;
+
       toast({
         title: 'Bem-vindo!',
         description: 'Login realizado com sucesso.',
@@ -142,6 +162,7 @@ export function useAuth() {
 
       return { error: null };
     } catch (err) {
+      failedAttempts.current += 1;
       const error = err as Error;
       toast({
         title: 'Erro',
@@ -195,6 +216,7 @@ export function useAuth() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      failedAttempts.current = 0;
       toast({
         title: 'Até logo!',
         description: 'Você saiu da sua conta.',
@@ -207,13 +229,13 @@ export function useAuth() {
   const hasRole = useCallback((role: AppRole) => {
     if (!userRole) return false;
     
-    // Admin has access to everything
+    // Admin tem acesso a tudo
     if (userRole === 'admin') return true;
     
-    // Manager has access to manager and user roles
+    // Manager tem acesso a manager e user
     if (userRole === 'manager' && (role === 'manager' || role === 'user')) return true;
     
-    // User only has user access
+    // User só tem acesso de user
     return userRole === role;
   }, [userRole]);
 
@@ -226,14 +248,17 @@ export function useAuth() {
     session,
     userRole,
     loading,
+    // SEG-006: isRoleLoading separado — não confundir "sem role" com "role não carregado"
+    isRoleLoading,
     signIn,
     signUp,
     signOut,
     hasRole,
     canManageCollaborators,
     isAuthenticated: !!session,
-    // Atalhos de role para uso simplificado nos componentes
+    // Atalhos de role — só avaliados após isRoleLoading = false
     isAdmin: userRole === 'admin',
-    isAgent: userRole === 'user' || userRole === null,
+    // SEG-006: corrigido — userRole === null não significa isAgent enquanto carrega
+    isAgent: userRole === 'user',
   };
 }

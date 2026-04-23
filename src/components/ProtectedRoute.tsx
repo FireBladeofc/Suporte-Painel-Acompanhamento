@@ -8,7 +8,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useAuth();
+  // SEG-006: consome isRoleLoading para evitar renderização com role indefinido
+  const { isAuthenticated, loading, isRoleLoading } = useAuth();
   const location = useLocation();
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
 
@@ -17,17 +18,22 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     import.meta.env.VITE_SUPABASE_URL && 
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+  // Considera carregando enquanto auth OU role estão sendo resolvidos
+  const isLoading = loading || isRoleLoading;
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (loading) {
+    if (isLoading) {
       timer = setTimeout(() => {
         setShowTimeoutMessage(true);
-      }, 5000); // 5 seconds timeout
+      }, 5000); // 5 segundos de timeout
+    } else {
+      setShowTimeoutMessage(false);
     }
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [isLoading]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
         <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />

@@ -1,7 +1,65 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useExcelUpload, UploadResult } from '@/hooks/useExcelUpload';
+
+// SEG-008: Limite de tamanho e assinaturas binárias aceitas
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const XLSX_MAGIC = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // PK\x03\x04 (ZIP/OOXML)
+const XLS_MAGIC  = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]); // OLE2 Compound File
+
+/**
+ * Lê os primeiros N bytes de um File sem carregar o arquivo inteiro.
+ */
+async function readMagicBytes(file: File, n = 4): Promise<Uint8Array> {
+  const slice = file.slice(0, n);
+  const buffer = await slice.arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
+/**
+ * Compara dois Uint8Array byte a byte.
+ */
+function startsWith(data: Uint8Array, signature: Uint8Array): boolean {
+  if (data.length < signature.length) return false;
+  return signature.every((byte, i) => data[i] === byte);
+}
+
+/**
+ * Valida tipo e tamanho do arquivo antes do processamento.
+ * Retorna string de erro ou null se válido.
+ */
+async function validateFile(file: File): Promise<string | null> {
+  // Validação de tamanho
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    return `Arquivo muito grande (${sizeMB} MB). O limite é 10 MB.`;
+  }
+
+  const nameLower = file.name.toLowerCase();
+  const magic = await readMagicBytes(file, 4);
+
+  if (nameLower.endsWith('.xlsx')) {
+    if (!startsWith(magic, XLSX_MAGIC)) {
+      return 'O arquivo não possui uma assinatura .xlsx válida. Verifique se o arquivo não está corrompido.';
+    }
+    return null;
+  }
+
+  if (nameLower.endsWith('.xls')) {
+    if (!startsWith(magic, XLS_MAGIC)) {
+      return 'O arquivo não possui uma assinatura .xls válida. Verifique se o arquivo não está corrompido.';
+    }
+    return null;
+  }
+
+  if (nameLower.endsWith('.csv')) {
+    // CSV é texto — sem magic bytes fixas; aceito se a extensão for correta
+    return null;
+  }
+
+  return 'Formato não suportado. Envie arquivos .xlsx, .xls ou .csv.';
+}
 import {
   Dialog,
   DialogContent,
@@ -26,31 +84,17 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type - now includes CSV
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'text/csv',
-      '.xlsx',
-      '.xls',
-      '.csv'
-    ];
-    
-    const isValidType = validTypes.some(type => 
-      file.type === type || 
-      file.name.endsWith('.xlsx') || 
-      file.name.endsWith('.xls') ||
-      file.name.endsWith('.csv')
-    );
-
-    if (!isValidType) {
+    // SEG-008: Validação de tamanho + assinatura binária (magic bytes)
+    const validationError = await validateFile(file);
+    if (validationError) {
       setUploadResult({
         success: false,
         tickets: [],
         rowCount: 0,
-        errors: ['Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)']
+        errors: [validationError],
       });
       setShowResult(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
