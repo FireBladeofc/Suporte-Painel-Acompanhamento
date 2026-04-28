@@ -19,7 +19,24 @@ export default defineConfig(({ mode }) => ({
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
       workbox: {
+        // Força o SW novo a assumir controle imediatamente (sem esperar fechar abas)
+        clientsClaim: true,
+        skipWaiting: true,
+        // Desabilita o precache do index.html (causa raiz do "stale shell")
+        navigateFallback: null,
         maximumFileSizeToCacheInBytes: 5000000,
+        // Navegações sempre buscam na rede primeiro — garante CSP atualizada
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }: { request: Request }) =>
+              request.mode === 'navigate',
+            handler: 'NetworkFirst' as const,
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
       manifest: {
         name: "Painel Suporte Dashboard",
