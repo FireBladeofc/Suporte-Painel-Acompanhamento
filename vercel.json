@@ -27,7 +27,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://painel-imp-cs-chatpro.vercel.app;"
+          "value": "frame-ancestors *;"
         }
       ]
     }
